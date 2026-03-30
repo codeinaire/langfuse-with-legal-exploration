@@ -43,8 +43,8 @@ Because the repo already contains files (README.md, LICENSE.md, .gitignore, proj
   - Done when: `next.config.ts` exists at the repo root.
 
 - [x] **1.4** Create the App Router file structure:
-  - `src/app/layout.tsx` -- root layout with `<html>` and `<body>` tags, exports `metadata` with title "LEAP Pathways Demo".
-  - `src/app/page.tsx` -- simple page component rendering a heading (e.g., "LEAP Pathways Demo") as a placeholder.
+  - `src/app/layout.tsx` -- root layout with `<html>` and `<body>` tags, exports `metadata` with title "Legal Agent Flow Demo".
+  - `src/app/page.tsx` -- simple page component rendering a heading (e.g., "Legal Agent Flow Demo") as a placeholder.
   - Done when: `npx next dev` starts the dev server without errors and `http://localhost:3000` renders the placeholder page.
 
 - [x] **1.5** Add npm scripts to `package.json`:

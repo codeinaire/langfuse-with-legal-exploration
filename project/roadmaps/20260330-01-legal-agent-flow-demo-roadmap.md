@@ -1,6 +1,6 @@
-# LEAP Pathways Demo -- Feature Roadmap
+# Legal Agent Flow Demo -- Feature Roadmap
 
-A demo project for a Senior Full Stack Engineer interview at LEAP (ATI Group), targeting their "Pathways" product -- an AI-driven legal workflow guidance system. The demo builds a legal matter progression agent using Next.js, Vercel AI SDK, Drizzle ORM, Neon Postgres, Langfuse, and Google Gemini. Everything runs on free tiers ($0 budget). The goal is not production software but a working prototype that demonstrates domain understanding, stack alignment, and production-grade thinking within a few days of build time.
+A demo project for a Senior Full Stack Engineer interview at the company (ATI Group), targeting their AI-driven legal workflow guidance product. The demo builds a legal matter progression agent using Next.js, Vercel AI SDK, Drizzle ORM, Neon Postgres, Langfuse, and Google Gemini. Everything runs on free tiers ($0 budget). The goal is not production software but a working prototype that demonstrates domain understanding, stack alignment, and production-grade thinking within a few days of build time.
 
 ---
 
@@ -56,7 +56,7 @@ Set up the persistence layer: Drizzle ORM connected to Neon PostgreSQL via the s
 
 ### Pros
 
-- **Exact stack match.** LEAP uses Drizzle + Neon. This is not a technology choice -- it is a signal of alignment.
+- **Exact stack match.** the company uses Drizzle + Neon. This is not a technology choice -- it is a signal of alignment.
 - **Type-safe from schema to query.** Drizzle's TypeScript-first schema means the data model is self-documenting and the compiler catches shape mismatches. Strong interview talking point.
 - **Minimal bundle impact.** The neon-http driver is ~410KB unpacked; after tree-shaking, the runtime contribution is ~30-50KB gzipped. No bloat.
 - **Instant cold starts.** Neon's HTTP driver avoids persistent connections, which is ideal for Vercel serverless functions. No connection pooling setup needed.
@@ -207,9 +207,9 @@ Structure the LLM provider configuration so the app can switch between Gemini, G
 ### Pros
 
 - **Highest ROI-to-effort ratio in the entire roadmap.** The Vercel AI SDK already abstracts providers. The actual work is: install one extra provider package, create a provider factory function, and wire it to an env var. Maybe 1-2 hours.
-- **Direct interview relevance.** LEAP is evaluating AI agent frameworks. Showing that you think about provider portability -- not just "make it work with one model" -- signals architectural maturity.
+- **Direct interview relevance.** the company is evaluating AI agent frameworks. Showing that you think about provider portability -- not just "make it work with one model" -- signals architectural maturity.
 - **Free fallback path.** If Gemini rate limits are hit during a live demo (10 RPM), having Groq as a hot fallback with a config switch prevents demo failure. Groq has 30 RPM on its free tier.
-- **Talking point about framework evaluation.** This naturally leads into a conversation about Vercel AI SDK vs LangChain vs Mastra -- which is exactly the kind of evaluation LEAP's job description says they are doing.
+- **Talking point about framework evaluation.** This naturally leads into a conversation about Vercel AI SDK vs LangChain vs Mastra -- which is exactly the kind of evaluation the company's job description says they are doing.
 
 ### Cons
 
@@ -273,7 +273,7 @@ The core feature. A user selects a matter type (residential conveyancing -- buye
 
 ### Pros
 
-- **This IS the demo.** Everything else is supporting infrastructure. This feature is the thing the interviewer will see and interact with. It is the direct analog of LEAP's Pathways product.
+- **This IS the demo.** Everything else is supporting infrastructure. This feature is the thing the interviewer will see and interact with. It is the direct analog of the product.
 - **Demonstrates domain understanding.** The agent must know the conveyancing workflow stages, what happens at each stage, and what tasks need completing. Building this shows you understand the legal domain, not just the tech stack.
 - **AI SDK v6 Agent abstraction is purpose-built for this.** The agent loop with `stopWhen`, tool calling, and streaming is exactly the pattern needed. No custom orchestration code required -- the framework handles the loop, you define the tools and instructions.
 - **Concrete, observable output.** The agent produces actionable suggestions: "You should now conduct local authority searches. Here are the specific searches to order." This is tangible and testable, not abstract AI fluff.
@@ -383,7 +383,7 @@ Add thumbs up/down buttons on each AI suggestion. When a user rates a suggestion
 ### Pros
 
 - **Very high interview signal.** This shows you understand the AI product lifecycle: build -> measure -> improve. Most demo projects stop at "build." Adding the measurement layer shows you think about what happens after launch.
-- **Directly mirrors LEAP's existing patterns.** LEAP's LawY feature has a "human-in-the-loop" verification mechanism. Showing a feedback loop demonstrates alignment with their product philosophy.
+- **Directly mirrors the company's existing patterns.** the company's LawY feature has a "human-in-the-loop" verification mechanism. Showing a feedback loop demonstrates alignment with their product philosophy.
 - **Zero new dependencies.** Uses the existing Langfuse SDK from feature #2. The work is purely frontend buttons and one API endpoint.
 - **Tiny scope, disproportionate impact.** A few hours of work for a feature that changes the demo narrative from "look what the AI does" to "look how we measure and improve the AI."
 

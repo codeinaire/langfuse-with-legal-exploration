@@ -6,7 +6,7 @@
 
 ## Summary
 
-This research covers the technical setup for Feature #1 of the LEAP Pathways demo: a Drizzle ORM + Neon PostgreSQL data layer in a greenfield Next.js 15 project. The scope includes Next.js project scaffolding, Drizzle schema design for a legal matter progression app, the Neon serverless HTTP driver connection, drizzle-kit migration configuration, and seed data patterns.
+This research covers the technical setup for Feature #1 of the Legal Agent Flow demo: a Drizzle ORM + Neon PostgreSQL data layer in a greenfield Next.js 15 project. The scope includes Next.js project scaffolding, Drizzle schema design for a legal matter progression app, the Neon serverless HTTP driver connection, drizzle-kit migration configuration, and seed data patterns.
 
 The core finding is that the Drizzle + Neon pairing is well-documented with first-class integration. The correct driver is `drizzle-orm/neon-http` (not `drizzle-orm/neon-serverless`), which uses the `neon` HTTP query function from `@neondatabase/serverless`. The schema design is the most load-bearing decision -- the matter/stage/action hierarchy must support both agent tool calls and UI rendering, so relationships and enums need careful thought upfront. drizzle-kit provides three distinct commands (`generate`, `push`, `migrate`) with different use cases, and the choice between them affects the development workflow.
 
@@ -18,9 +18,9 @@ The core finding is that the Drizzle + Neon pairing is well-documented with firs
 
 | Library | Version | Purpose | License | Maintained? | Why Standard |
 |---------|---------|---------|---------|-------------|--------------|
-| `drizzle-orm` | 0.45.2 | TypeScript ORM with SQL-like query builder | Apache-2.0 | Yes (very active) | TypeScript-first, native Neon support, tree-shakeable, matches LEAP's stack |
+| `drizzle-orm` | 0.45.2 | TypeScript ORM with SQL-like query builder | Apache-2.0 | Yes (very active) | TypeScript-first, native Neon support, tree-shakeable, matches the company's stack |
 | `@neondatabase/serverless` | 1.0.2 | Serverless Postgres driver (HTTP + WebSocket) | MIT | Yes | Official Neon driver, optimized for edge/serverless, instant cold starts |
-| `next` | 15.x (latest) | React framework with App Router | MIT | Yes (Vercel maintained) | LEAP's stack, industry standard for React apps on Vercel |
+| `next` | 15.x (latest) | React framework with App Router | MIT | Yes (Vercel maintained) | the company's stack, industry standard for React apps on Vercel |
 
 ### Supporting
 
@@ -96,7 +96,7 @@ Why someone might NOT choose the recommended options:
 ### Recommended Project Structure
 
 ```
-leap-legal-prep/
+legal-agent-flow-demo/
 ├── src/
 │   ├── app/                    # Next.js App Router pages and layouts
 │   │   ├── layout.tsx
@@ -415,7 +415,7 @@ seed().catch(console.error);
 **When to use:** Greenfield project.
 
 ```bash
-npx create-next-app@latest leap-legal-prep \
+npx create-next-app@latest legal-agent-flow-demo \
   --typescript \
   --tailwind \
   --eslint \
@@ -432,7 +432,7 @@ npx create-next-app@latest leap-legal-prep \
 | `--typescript` | TypeScript configuration | Required for Drizzle type safety |
 | `--tailwind` | Tailwind CSS v4 setup | Standard for rapid UI development |
 | `--eslint` | ESLint configuration | Code quality |
-| `--app` | App Router (not Pages Router) | Current standard; LEAP's stack |
+| `--app` | App Router (not Pages Router) | Current standard; the company's stack |
 | `--src-dir` | Uses `src/` directory | Keeps root clean; standard for larger projects |
 | `--import-alias "@/*"` | Path alias `@/` maps to `src/` | Clean imports: `import { db } from '@/db'` |
 | `--turbopack` | Enables Turbopack for dev server | Faster HMR; default in Next.js 15.1+ |
@@ -696,9 +696,9 @@ type NewMatterStage = typeof matterStages.$inferInsert;
 
 ### Primary (HIGH confidence)
 
-- [Scout Report: Drizzle ORM + Neon PostgreSQL (section 5)](file:///Users/nousunio/Repos/Learnings/claude-code/leap-legal-prep/project/20260330-SCOUT-REPORT.md) -- Version numbers (drizzle-orm 0.45.2, @neondatabase/serverless 1.0.2), package sizes, license verification, Neon free tier limits, connection code pattern
-- [Scout Report: Legal Domain (section 6)](file:///Users/nousunio/Repos/Learnings/claude-code/leap-legal-prep/project/20260330-SCOUT-REPORT.md) -- Conveyancing workflow stages, domain modeling insight
-- [Roadmap: Feature #1 Drizzle + Neon Data Layer](file:///Users/nousunio/Repos/Learnings/claude-code/leap-legal-prep/project/roadmaps/20260330-01-leap-pathways-demo-roadmap.md) -- Schema requirements, todo list, impact analysis
+- [Scout Report: Drizzle ORM + Neon PostgreSQL (section 5)](file:///Users/nousunio/Repos/Learnings/claude-code/legal-agent-flow-demo/project/20260330-SCOUT-REPORT.md) -- Version numbers (drizzle-orm 0.45.2, @neondatabase/serverless 1.0.2), package sizes, license verification, Neon free tier limits, connection code pattern
+- [Scout Report: Legal Domain (section 6)](file:///Users/nousunio/Repos/Learnings/claude-code/legal-agent-flow-demo/project/20260330-SCOUT-REPORT.md) -- Conveyancing workflow stages, domain modeling insight
+- [Roadmap: Feature #1 Drizzle + Neon Data Layer](file:///Users/nousunio/Repos/Learnings/claude-code/legal-agent-flow-demo/project/roadmaps/20260330-01-legal-agent-flow-demo-roadmap.md) -- Schema requirements, todo list, impact analysis
 - [Drizzle ORM Official Docs: Get Started with Neon](https://orm.drizzle.team/docs/get-started/neon-new) -- Referenced by scout report for connection setup pattern
 - [Drizzle ORM Official Docs: Schema Declaration](https://orm.drizzle.team/docs/sql-schema-declaration) -- pgTable, pgEnum, column types
 - [Drizzle ORM Official Docs: Configuration File](https://orm.drizzle.team/docs/drizzle-config-file) -- drizzle.config.ts format

@@ -1,7 +1,7 @@
 # Implementation Summary: Drizzle + Neon Data Layer
 
 **Date:** 2026-03-30
-**Plan:** /Users/nousunio/Repos/Learnings/claude-code/leap-legal-prep/project/plans/20260330-010000-drizzle-neon-data-layer.md
+**Plan:** /Users/nousunio/Repos/Learnings/claude-code/legal-agent-flow-demo/project/plans/20260330-010000-drizzle-neon-data-layer.md
 
 ## Steps Completed
 
@@ -10,7 +10,7 @@ All file-creation steps were completed by the implementer agent:
 - **1.1** `package.json` created with all dependencies (Next.js, React, TypeScript, Tailwind CSS, Drizzle ORM, @neondatabase/serverless, drizzle-kit, dotenv, tsx).
 - **1.2** `tsconfig.json` created with standard Next.js 15 / bundler moduleResolution settings.
 - **1.3** `next.config.ts` created (minimal config).
-- **1.4** `src/app/layout.tsx` and `src/app/page.tsx` created (App Router structure, metadata title "LEAP Pathways Demo", placeholder heading).
+- **1.4** `src/app/layout.tsx` and `src/app/page.tsx` created (App Router structure, metadata title "Legal Agent Flow Demo", placeholder heading).
 - **1.5** All npm scripts added: `dev`, `build`, `start`, `lint`, `db:generate`, `db:migrate`, `db:push`, `db:studio`, `db:seed`.
 - **1.6** `postcss.config.mjs` created with `@tailwindcss/postcss` plugin; `src/app/globals.css` created with `@import "tailwindcss"` (Tailwind v4 format); `globals.css` imported in `layout.tsx`.
 - **2.3** `.env.local` created with placeholder `DATABASE_URL` (user must replace with real Neon connection string).
@@ -50,15 +50,15 @@ Not runnable by agent (no Bash tool). Once the user runs `npm install` and fills
 
 ## Files Created
 
-- `/Users/nousunio/Repos/Learnings/claude-code/leap-legal-prep/package.json`
-- `/Users/nousunio/Repos/Learnings/claude-code/leap-legal-prep/tsconfig.json`
-- `/Users/nousunio/Repos/Learnings/claude-code/leap-legal-prep/next.config.ts`
-- `/Users/nousunio/Repos/Learnings/claude-code/leap-legal-prep/postcss.config.mjs`
-- `/Users/nousunio/Repos/Learnings/claude-code/leap-legal-prep/drizzle.config.ts`
-- `/Users/nousunio/Repos/Learnings/claude-code/leap-legal-prep/.env.local` (placeholder DATABASE_URL)
-- `/Users/nousunio/Repos/Learnings/claude-code/leap-legal-prep/src/app/layout.tsx`
-- `/Users/nousunio/Repos/Learnings/claude-code/leap-legal-prep/src/app/page.tsx`
-- `/Users/nousunio/Repos/Learnings/claude-code/leap-legal-prep/src/app/globals.css`
-- `/Users/nousunio/Repos/Learnings/claude-code/leap-legal-prep/src/db/schema.ts`
-- `/Users/nousunio/Repos/Learnings/claude-code/leap-legal-prep/src/db/index.ts`
-- `/Users/nousunio/Repos/Learnings/claude-code/leap-legal-prep/src/db/seed.ts`
+- `/Users/nousunio/Repos/Learnings/claude-code/legal-agent-flow-demo/package.json`
+- `/Users/nousunio/Repos/Learnings/claude-code/legal-agent-flow-demo/tsconfig.json`
+- `/Users/nousunio/Repos/Learnings/claude-code/legal-agent-flow-demo/next.config.ts`
+- `/Users/nousunio/Repos/Learnings/claude-code/legal-agent-flow-demo/postcss.config.mjs`
+- `/Users/nousunio/Repos/Learnings/claude-code/legal-agent-flow-demo/drizzle.config.ts`
+- `/Users/nousunio/Repos/Learnings/claude-code/legal-agent-flow-demo/.env.local` (placeholder DATABASE_URL)
+- `/Users/nousunio/Repos/Learnings/claude-code/legal-agent-flow-demo/src/app/layout.tsx`
+- `/Users/nousunio/Repos/Learnings/claude-code/legal-agent-flow-demo/src/app/page.tsx`
+- `/Users/nousunio/Repos/Learnings/claude-code/legal-agent-flow-demo/src/app/globals.css`
+- `/Users/nousunio/Repos/Learnings/claude-code/legal-agent-flow-demo/src/db/schema.ts`
+- `/Users/nousunio/Repos/Learnings/claude-code/legal-agent-flow-demo/src/db/index.ts`
+- `/Users/nousunio/Repos/Learnings/claude-code/legal-agent-flow-demo/src/db/seed.ts`
