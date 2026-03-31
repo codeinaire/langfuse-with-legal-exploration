@@ -16,7 +16,11 @@
 		"db:seed": "tsx src/db/seed.ts"
 	},
 	"dependencies": {
+		"@ai-sdk/google": "^3.0.54",
+		"@langfuse/otel": "^5.0.0",
 		"@neondatabase/serverless": "^1.0.2",
+		"@opentelemetry/sdk-trace-node": "^2.0.0",
+		"ai": "^6.0.141",
 		"drizzle-orm": "^0.45.2",
 		"next": "^16.2.1",
 		"react": "^19.2.4",
