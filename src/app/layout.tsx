@@ -1,19 +1,20 @@
-import type { Metadata } from 'next';
-import './globals.css';
+import type { Metadata } from "next";
+import "./globals.css";
 
 export const metadata: Metadata = {
-  title: 'LEAP Pathways Demo',
-  description: 'AI-driven workflow guidance for legal matter lifecycle management.',
+	title: "Legal Agent Flow Demo",
+	description:
+		"AI-driven workflow guidance for legal matter lifecycle management.",
 };
 
 export default function RootLayout({
-  children,
+	children,
 }: {
-  children: React.ReactNode;
+	children: React.ReactNode;
 }) {
-  return (
-    <html lang="en">
-      <body>{children}</body>
-    </html>
-  );
+	return (
+		<html lang="en">
+			<body>{children}</body>
+		</html>
+	);
 }
