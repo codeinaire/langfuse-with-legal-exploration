@@ -1,123 +1,210 @@
+import { relations } from "drizzle-orm";
 import {
-  boolean,
-  integer,
-  jsonb,
-  pgEnum,
-  pgTable,
-  text,
-  timestamp,
-  uuid,
-  varchar,
-} from 'drizzle-orm/pg-core';
-import { relations } from 'drizzle-orm';
+	boolean,
+	pgEnum,
+	pgTable,
+	text,
+	timestamp,
+	unique,
+	uuid,
+	varchar,
+} from "drizzle-orm/pg-core";
+
+// ─── Common Columns ──────────────────────────────────────────────────────────
+
+const baseColumns = {
+	id: uuid("id").defaultRandom().primaryKey(),
+	createdAt: timestamp("created_at", { withTimezone: true })
+		.defaultNow()
+		.notNull(),
+	updatedAt: timestamp("updated_at", { withTimezone: true })
+		.defaultNow()
+		.notNull(),
+};
 
 // ─── Enums ────────────────────────────────────────────────────────────────────
 
-export const matterTypeEnum = pgEnum('matter_type', [
-  'residential_conveyancing',
-  'family_law',
+export const matterTypeEnum = pgEnum("matter_type", [
+	"residential_conveyancing",
 ]);
 
-export const stageStatusEnum = pgEnum('stage_status', [
-  'not_started',
-  'in_progress',
-  'completed',
-  'skipped',
+export const progressStatusEnum = pgEnum("progress_status", [
+	"not_started",
+	"in_progress",
+	"blocked",
+	"completed",
+	"skipped",
 ]);
 
-export const actionStatusEnum = pgEnum('action_status', [
-  'pending',
-  'in_progress',
-  'completed',
-  'skipped',
+export const conveyancingStageEnum = pgEnum("conveyancing_stage", [
+	"engagement_and_onboarding",
+	"pre_contract_review",
+	"searches_and_investigations",
+	"pre_contract_enquiries",
+	"finance_and_mortgage",
+	"report_to_client",
+	"exchange_of_contracts",
+	"pre_settlement",
+	"settlement",
+	"post_settlement",
 ]);
 
-// ─── JSONB Types ──────────────────────────────────────────────────────────────
+export const matterStatusEnum = pgEnum("matter_status", [
+	"open",
+	"on_hold",
+	"completed",
+	"archived",
+]);
 
-export interface Message {
-  role: 'user' | 'assistant' | 'system';
-  content: string;
-  timestamp: string;
-}
+export const stateEnum = pgEnum("australian_state", [
+	"nsw",
+	"vic",
+	"qld",
+	"wa",
+	"sa",
+	"tas",
+	"act",
+	"nt",
+]);
+
+export const messageRoleEnum = pgEnum("message_role", [
+	"user",
+	"assistant",
+	"system",
+]);
 
 // ─── Tables ───────────────────────────────────────────────────────────────────
 
-export const matters = pgTable('matters', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  type: matterTypeEnum('type').notNull(),
-  title: varchar('title', { length: 255 }).notNull(),
-  description: text('description'),
-  currentStageOrder: integer('current_stage_order').default(1),
-  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
-  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+export const properties = pgTable("properties", {
+	...baseColumns,
+	streetAddress: varchar("street_address", { length: 255 }).notNull(),
+	suburb: varchar("suburb", { length: 255 }).notNull(),
+	state: stateEnum("state").notNull(),
+	postcode: varchar("postcode", { length: 4 }).notNull(),
+	lotNumber: varchar("lot_number", { length: 50 }),
+	planNumber: varchar("plan_number", { length: 50 }),
+	titleReference: varchar("title_reference", { length: 100 }),
 });
 
-export const matterStages = pgTable('matter_stages', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  matterId: uuid('matter_id')
-    .notNull()
-    .references(() => matters.id, { onDelete: 'cascade' }),
-  name: varchar('name', { length: 255 }).notNull(),
-  description: text('description'),
-  stageOrder: integer('stage_order').notNull(),
-  status: stageStatusEnum('status').default('not_started').notNull(),
-  startedAt: timestamp('started_at', { withTimezone: true }),
-  completedAt: timestamp('completed_at', { withTimezone: true }),
-  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
-  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+export const matters = pgTable("matters", {
+	...baseColumns,
+	referenceNumber: varchar("reference_number", { length: 50 }).notNull().unique(),
+	type: matterTypeEnum("type").notNull(),
+	status: matterStatusEnum("status").default("open").notNull(),
+	propertyId: uuid("property_id")
+		.notNull()
+		.references(() => properties.id, { onDelete: "restrict" }),
+	title: varchar("title", { length: 255 }).notNull(),
+	description: text("description"),
+	currentStage: conveyancingStageEnum("current_stage")
+		.default("engagement_and_onboarding")
+		.notNull(),
 });
 
-export const matterActions = pgTable('matter_actions', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  stageId: uuid('stage_id')
-    .notNull()
-    .references(() => matterStages.id, { onDelete: 'cascade' }),
-  description: text('description').notNull(),
-  aiSuggested: boolean('ai_suggested').default(false).notNull(),
-  status: actionStatusEnum('status').default('pending').notNull(),
-  completedAt: timestamp('completed_at', { withTimezone: true }),
-  notes: text('notes'),
-  sortOrder: integer('sort_order').default(0).notNull(),
-  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
-  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+export const matterStages = pgTable(
+	"matter_stages",
+	{
+		...baseColumns,
+		matterId: uuid("matter_id")
+			.notNull()
+			.references(() => matters.id, { onDelete: "cascade" }),
+		stage: conveyancingStageEnum("stage").notNull(),
+		status: progressStatusEnum("status").default("not_started").notNull(),
+		startedAt: timestamp("started_at", { withTimezone: true }),
+		completedAt: timestamp("completed_at", { withTimezone: true }),
+		notes: text("notes"),
+	},
+	(table) => [unique().on(table.matterId, table.stage)],
+);
+
+export const matterActions = pgTable("matter_actions", {
+	...baseColumns,
+	matterStageId: uuid("matter_stage_id")
+		.notNull()
+		.references(() => matterStages.id, { onDelete: "cascade" }),
+	description: text("description").notNull(),
+	aiSuggested: boolean("ai_suggested").default(false).notNull(),
+	status: progressStatusEnum("status").default("not_started").notNull(),
+	dueDate: timestamp("due_date", { withTimezone: true }),
+	completedAt: timestamp("completed_at", { withTimezone: true }),
+	notes: text("notes"),
 });
 
-export const conversations = pgTable('conversations', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  matterId: uuid('matter_id')
-    .notNull()
-    .references(() => matters.id, { onDelete: 'cascade' }),
-  sessionId: varchar('session_id', { length: 255 }),
-  messages: jsonb('messages').$type<Message[]>().default([]).notNull(),
-  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
-  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+export const aiChats = pgTable("ai_chats", {
+	id: uuid("id").defaultRandom().primaryKey(),
+	matterStageId: uuid("matter_stage_id")
+		.notNull()
+		.references(() => matterStages.id, { onDelete: "cascade" }),
+	title: varchar("title", { length: 255 }),
+	model: varchar("model", { length: 100 }),
+	sessionId: varchar("session_id", { length: 255 }),
+	createdAt: timestamp("created_at", { withTimezone: true })
+		.defaultNow()
+		.notNull(),
+});
+
+export const aiChatMessages = pgTable("ai_chat_messages", {
+	id: uuid("id").defaultRandom().primaryKey(),
+	aiChatId: uuid("ai_chat_id")
+		.notNull()
+		.references(() => aiChats.id, { onDelete: "cascade" }),
+	role: messageRoleEnum("role").notNull(),
+	content: text("content").notNull(),
+	createdAt: timestamp("created_at", { withTimezone: true })
+		.defaultNow()
+		.notNull(),
 });
 
 // ─── Relations ────────────────────────────────────────────────────────────────
 
-export const mattersRelations = relations(matters, ({ many }) => ({
-  stages: many(matterStages),
-  conversations: many(conversations),
+export const propertiesRelations = relations(properties, ({ many }) => ({
+	matters: many(matters),
 }));
 
-export const matterStagesRelations = relations(matterStages, ({ one, many }) => ({
-  matter: one(matters, {
-    fields: [matterStages.matterId],
-    references: [matters.id],
-  }),
-  actions: many(matterActions),
+export const mattersRelations = relations(matters, ({ one, many }) => ({
+	property: one(properties, {
+		fields: [matters.propertyId],
+		references: [properties.id],
+	}),
+	matterStages: many(matterStages),
 }));
+
+export const matterStagesRelations = relations(
+	matterStages,
+	({ one, many }) => ({
+		matter: one(matters, {
+			fields: [matterStages.matterId],
+			references: [matters.id],
+		}),
+		matterActions: many(matterActions),
+		aiChats: many(aiChats),
+	}),
+);
 
 export const matterActionsRelations = relations(matterActions, ({ one }) => ({
-  stage: one(matterStages, {
-    fields: [matterActions.stageId],
-    references: [matterStages.id],
-  }),
+	matterStage: one(matterStages, {
+		fields: [matterActions.matterStageId],
+		references: [matterStages.id],
+	}),
 }));
 
-export const conversationsRelations = relations(conversations, ({ one }) => ({
-  matter: one(matters, {
-    fields: [conversations.matterId],
-    references: [matters.id],
-  }),
-}));
+export const aiChatsRelations = relations(
+	aiChats,
+	({ one, many }) => ({
+		matterStage: one(matterStages, {
+			fields: [aiChats.matterStageId],
+			references: [matterStages.id],
+		}),
+		aiChatMessages: many(aiChatMessages),
+	}),
+);
+
+export const aiChatMessagesRelations = relations(
+	aiChatMessages,
+	({ one }) => ({
+		aiChat: one(aiChats, {
+			fields: [aiChatMessages.aiChatId],
+			references: [aiChats.id],
+		}),
+	}),
+);
