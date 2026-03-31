@@ -4,7 +4,7 @@ An AI-powered legal matter progression agent that guides lawyers through residen
 
 ## Stack
 
-- **Framework:** Next.js 15 (App Router, TypeScript, Tailwind CSS v4)
+- **Framework:** Next.js 16 (App Router, TypeScript, Tailwind CSS v4)
 - **Database:** Neon PostgreSQL (serverless HTTP driver)
 - **ORM:** Drizzle ORM
 - **AI:** Vercel AI SDK + Google Gemini (free tier)
@@ -26,7 +26,7 @@ An AI-powered legal matter progression agent that guides lawyers through residen
 npm install
 
 # Copy env template and add your Neon connection string
-cp .env.local.example .env.local
+cp .env.example .env.local
 # Edit .env.local with your DATABASE_URL
 
 # Generate and apply migrations
@@ -42,12 +42,14 @@ npm run dev
 
 ## Database Schema
 
-Four tables model the legal matter lifecycle:
+Six tables model the legal matter lifecycle:
 
+- **properties** -- Physical properties associated with matters
 - **matters** -- A legal matter (e.g., residential conveyancing for a specific client)
 - **matter_stages** -- The stages a matter progresses through (10 stages for conveyancing)
 - **matter_actions** -- Individual tasks within each stage
-- **conversations** -- Chat history between the user and the AI agent (JSONB messages)
+- **ai_chats** -- Chat sessions between the user and the AI agent
+- **ai_chat_messages** -- Individual messages within a chat session
 
 The seed script creates a sample residential conveyancing matter with all 10 stages and 50 actions based on the Australian buyer-side conveyancing workflow.
 
@@ -71,7 +73,7 @@ The seed script creates a sample residential conveyancing matter with all 10 sta
 src/
   app/              # Next.js App Router pages
   db/
-    schema.ts       # Drizzle schema (4 tables, 3 enums, relations)
+    schema.ts       # Drizzle schema (6 tables, 6 enums, relations)
     index.ts        # Database connection (Neon HTTP driver)
     seed.ts         # Seed script with conveyancing workflow data
 drizzle/            # Generated migration SQL (version-controlled)

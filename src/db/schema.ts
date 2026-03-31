@@ -88,7 +88,9 @@ export const properties = pgTable("properties", {
 
 export const matters = pgTable("matters", {
 	...baseColumns,
-	referenceNumber: varchar("reference_number", { length: 50 }).notNull().unique(),
+	referenceNumber: varchar("reference_number", { length: 50 })
+		.notNull()
+		.unique(),
 	type: matterTypeEnum("type").notNull(),
 	status: matterStatusEnum("status").default("open").notNull(),
 	propertyId: uuid("property_id")
@@ -188,23 +190,17 @@ export const matterActionsRelations = relations(matterActions, ({ one }) => ({
 	}),
 }));
 
-export const aiChatsRelations = relations(
-	aiChats,
-	({ one, many }) => ({
-		matterStage: one(matterStages, {
-			fields: [aiChats.matterStageId],
-			references: [matterStages.id],
-		}),
-		aiChatMessages: many(aiChatMessages),
+export const aiChatsRelations = relations(aiChats, ({ one, many }) => ({
+	matterStage: one(matterStages, {
+		fields: [aiChats.matterStageId],
+		references: [matterStages.id],
 	}),
-);
+	aiChatMessages: many(aiChatMessages),
+}));
 
-export const aiChatMessagesRelations = relations(
-	aiChatMessages,
-	({ one }) => ({
-		aiChat: one(aiChats, {
-			fields: [aiChatMessages.aiChatId],
-			references: [aiChats.id],
-		}),
+export const aiChatMessagesRelations = relations(aiChatMessages, ({ one }) => ({
+	aiChat: one(aiChats, {
+		fields: [aiChatMessages.aiChatId],
+		references: [aiChats.id],
 	}),
-);
+}));

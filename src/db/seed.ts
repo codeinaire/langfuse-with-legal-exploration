@@ -3,6 +3,7 @@ import dotenv from "dotenv";
 dotenv.config({ path: ".env.local" });
 
 import { neon } from "@neondatabase/serverless";
+import { sql as rawSql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/neon-http";
 import * as schema from "./schema";
 
@@ -99,6 +100,12 @@ const stageActions: Record<ConveyancingStage, string[]> = {
 async function main() {
 	console.log("Seeding database...");
 
+	// Clear existing data (idempotent re-runs)
+	console.log("Clearing existing data...");
+	await db.execute(
+		rawSql`TRUNCATE TABLE ai_chat_messages, ai_chats, matter_actions, matter_stages, matters, properties CASCADE`,
+	);
+
 	// Insert sample property
 	const [property] = await db
 		.insert(schema.properties)
@@ -130,7 +137,10 @@ async function main() {
 	console.log(`Inserted matter: ${matter.referenceNumber} -- ${matter.title}`);
 
 	// Insert all stages
-	for (const [index, stageName] of schema.conveyancingStageEnum.enumValues.entries()) {
+	for (const [
+		index,
+		stageName,
+	] of schema.conveyancingStageEnum.enumValues.entries()) {
 		const isFirstStage = index === 0;
 
 		const [stage] = await db
