@@ -6,15 +6,36 @@
 
 import { google } from "@ai-sdk/google";
 import { streamText } from "ai";
+import { z } from "zod";
 import { createTelemetryConfig } from "@/lib/ai/telemetry";
 
-export async function POST(req: Request) {
-	const { messages, matterId } = await req.json();
+const chatRequestSchema = z.object({
+	messages: z
+		.array(
+			z.object({
+				role: z.enum(["user", "assistant", "system"]),
+				content: z.string(),
+			}),
+		)
+		.min(1, "messages must be a non-empty array"),
+	matterId: z.string().optional(),
+});
 
-	const resolvedMatterId: string =
-		typeof matterId === "string" && matterId.length > 0
-			? matterId
-			: "test-matter-001";
+export async function POST(req: Request) {
+	let body: unknown;
+	try {
+		body = await req.json();
+	} catch {
+		return new Response("Invalid JSON", { status: 400 });
+	}
+
+	const parsed = chatRequestSchema.safeParse(body);
+	if (!parsed.success) {
+		return new Response(parsed.error.issues[0].message, { status: 400 });
+	}
+
+	const { messages, matterId } = parsed.data;
+	const resolvedMatterId = matterId ?? "test-matter-001";
 
 	const result = streamText({
 		model: google("gemini-2.5-flash"),
