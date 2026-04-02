@@ -27,7 +27,12 @@ npm install
 
 # Copy env template and add your Neon connection string
 cp .env.example .env.local
-# Edit .env.local with your DATABASE_URL
+# Edit .env.local with:
+#   DATABASE_URL        - Neon connection string (from console.neon.tech)
+#   LANGFUSE_PUBLIC_KEY - Langfuse public key (from project settings)
+#   LANGFUSE_SECRET_KEY - Langfuse secret key
+#   LANGFUSE_BASEURL    - https://cloud.langfuse.com (or self-hosted URL)
+#   GOOGLE_GENERATIVE_AI_API_KEY - Gemini API key (from aistudio.google.com)
 
 # Generate and apply migrations
 npm run db:generate
@@ -71,11 +76,18 @@ The seed script creates a sample residential conveyancing matter with all 10 sta
 
 ```
 src/
-  app/              # Next.js App Router pages
+  app/
+    api/chat/route.ts   # Chat API route (Gemini + Langfuse tracing)
+    layout.tsx          # Root layout
+    page.tsx            # Home page
+    globals.css         # Tailwind v4 styles
   db/
-    schema.ts       # Drizzle schema (6 tables, 6 enums, relations)
-    index.ts        # Database connection (Neon HTTP driver)
-    seed.ts         # Seed script with conveyancing workflow data
-drizzle/            # Generated migration SQL (version-controlled)
-drizzle.config.ts   # Drizzle Kit configuration
+    schema.ts           # Drizzle schema (6 tables, 6 enums, relations)
+    index.ts            # Database connection (Neon HTTP driver)
+    seed.ts             # Seed script with conveyancing workflow data
+  lib/ai/
+    telemetry.ts        # Shared telemetry config for AI SDK calls
+  instrumentation.ts    # OTel + Langfuse provider registration
+drizzle/                # Generated migration SQL (version-controlled)
+drizzle.config.ts       # Drizzle Kit configuration
 ```
