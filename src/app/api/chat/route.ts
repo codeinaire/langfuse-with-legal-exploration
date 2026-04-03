@@ -1,4 +1,4 @@
-import { propagateAttributes, startActiveObservation } from "@langfuse/tracing";
+import { propagateAttributes } from "@langfuse/tracing";
 import { streamText } from "ai";
 import { z } from "zod";
 import { getModel } from "@/lib/ai/model";
@@ -31,39 +31,25 @@ export const POST = async (req: Request) => {
 	const { messages, matterId } = parsed.data;
 	const resolvedMatterId = matterId ?? "test-matter-001";
 
-	return startActiveObservation(
-		"test-capture-i-o-explicit-update",
-		async (span) => {
-			span.update({
-				input: { messages },
+	return propagateAttributes(
+		{
+			traceName: "matter-chat",
+			sessionId: resolvedMatterId,
+			userId: "demo-user",
+			version: "1.0",
+			metadata: { env: "demo" },
+			tags: ["conversational"],
+		},
+		async () => {
+			const result = streamText({
+				model: getModel(),
+				system:
+					"You are a legal workflow assistant helping with conveyancing matters in Australia.",
+				messages,
+				experimental_telemetry: { isEnabled: true },
 			});
 
-			return propagateAttributes(
-				{
-					sessionId: resolvedMatterId,
-					userId: "demo-user",
-					version: "1.0",
-					metadata: { env: "demo" },
-					tags: ["conversational"],
-				},
-				async () => {
-					const result = streamText({
-						model: getModel(),
-						system:
-							"You are a legal workflow assistant helping with conveyancing matters in Australia.",
-						messages,
-						experimental_telemetry: { isEnabled: true },
-					});
-
-					const response = result.toTextStreamResponse();
-
-					span.update({
-						output: { response: await result.text },
-					});
-
-					return response;
-				},
-			);
+			return result.toTextStreamResponse();
 		},
 	);
 };

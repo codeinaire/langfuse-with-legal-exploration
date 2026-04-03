@@ -12,14 +12,17 @@ const MODEL_MAP: Record<AIProvider, () => LanguageModelV3> = {
 };
 
 export function getModel(): LanguageModelV3 {
-	const provider = (process.env.AI_PROVIDER ?? DEFAULT_PROVIDER) as string;
-	const factory = MODEL_MAP[provider as AIProvider];
+	const provider = process.env.AI_PROVIDER ?? DEFAULT_PROVIDER;
 
-	if (!factory) {
+	if (!isAIProvider(provider)) {
 		throw new Error(
 			`Unknown AI_PROVIDER: "${provider}". Valid options are: ${Object.keys(MODEL_MAP).join(", ")}`,
 		);
 	}
 
-	return factory();
+	return MODEL_MAP[provider]();
+}
+
+function isAIProvider(value: string): value is AIProvider {
+	return value in MODEL_MAP;
 }
