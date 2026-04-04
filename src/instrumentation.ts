@@ -7,9 +7,13 @@
  */
 import { LangfuseSpanProcessor } from "@langfuse/otel";
 import { NodeTracerProvider } from "@opentelemetry/sdk-trace-node";
+import { validateModelProvider } from "@/lib/ai/model";
 
-export function register() {
-	const provider = new NodeTracerProvider({
+export async function register() {
+	// validate correct provider is being used
+	validateModelProvider();
+
+	const observabilityProvider = new NodeTracerProvider({
 		spanProcessors: [
 			new LangfuseSpanProcessor({
 				publicKey: process.env.LANGFUSE_PUBLIC_KEY,
@@ -25,7 +29,7 @@ export function register() {
 		],
 	});
 
-	provider.register();
+	observabilityProvider.register();
 
 	console.log("Instrumentation: Langfuse OTel provider registered");
 }
