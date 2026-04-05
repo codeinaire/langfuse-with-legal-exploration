@@ -1,35 +1,27 @@
 /**
- * Next.js instrumentation hook (Node.js only) -- runs once when the server starts.
+ * Next.js instrumentation hook -- runs once when the server starts.
  * Initializes the OpenTelemetry provider with Langfuse so all
- * Vercel AI SDK calls are automatically traced and visible in Langfuse.
- *
- * The `.node.ts` suffix ensures Next.js only loads this file in the Node.js runtime.
+ * AI SDK calls are automatically traced and visible in Langfuse.
  */
-import { LangfuseSpanProcessor } from "@langfuse/otel";
-import { NodeTracerProvider } from "@opentelemetry/sdk-trace-node";
-import { validateModelProvider } from "@/lib/ai/model";
+import { LangfuseSpanProcessor } from '@langfuse/otel'
+import { NodeTracerProvider } from '@opentelemetry/sdk-trace-node'
+import { validateModelProvider } from '@/lib/ai/model'
+
+export const langfuseSpanProcessor = new LangfuseSpanProcessor({
+  publicKey: process.env.LANGFUSE_PUBLIC_KEY,
+  secretKey: process.env.LANGFUSE_SECRET_KEY,
+  baseUrl: process.env.LANGFUSE_BASEURL ?? 'https://cloud.langfuse.com',
+  environment: 'demo',
+})
 
 export async function register() {
-	// validate correct provider is being used
-	validateModelProvider();
+  validateModelProvider()
 
-	const observabilityProvider = new NodeTracerProvider({
-		spanProcessors: [
-			new LangfuseSpanProcessor({
-				publicKey: process.env.LANGFUSE_PUBLIC_KEY,
-				secretKey: process.env.LANGFUSE_SECRET_KEY,
-				baseUrl: process.env.LANGFUSE_BASEURL ?? "https://cloud.langfuse.com",
-				environment: "demo",
-				// mask: () => {
-				// TODO This is used to redact sensitive information or remove data that's not required
-				// I might need this in the future when I add users.
+  const tracerProvider = new NodeTracerProvider({
+    spanProcessors: [langfuseSpanProcessor],
+  })
 
-				// }
-			}),
-		],
-	});
+  tracerProvider.register()
 
-	observabilityProvider.register();
-
-	console.log("Instrumentation: Langfuse OTel provider registered");
+  console.log('Instrumentation: Langfuse OTel provider registered')
 }

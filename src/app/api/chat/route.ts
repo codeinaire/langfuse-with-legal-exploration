@@ -1,8 +1,17 @@
 import type { LanguageModelV3 } from '@ai-sdk/provider'
+import { langfuseSpanProcessor } from '@/instrumentation'
+import { getModelWithFallbacks } from '@/lib/ai/model'
 import { propagateAttributes } from '@langfuse/tracing'
 import { streamText } from 'ai'
+import { after } from 'next/server'
 import { z } from 'zod'
-import { getModelWithFallbacks } from '@/lib/ai/model'
+
+type MessageRole = 'user' | 'assistant' | 'system'
+
+interface Message {
+  role: MessageRole
+  content: string
+}
 
 const chatRequestSchema = z.object({
   messages: z
@@ -16,28 +25,25 @@ const chatRequestSchema = z.object({
   matterId: z.string().optional(),
 })
 
-type MessageRole = 'user' | 'assistant' | 'system'
-
-interface Message {
-  role: MessageRole
-  content: string
-}
-
 /**
- * This wraps the streamText function with the ability to failover to another model
- * if the current model has errored out
+ * Does a streamText call to the selected model provider but if that fails a fallback
+ * model provider is utilised and the the text repsonse is streamed back
  *
- * @param models - available models
- * @param system - the system prompt attached to the text stream
- * @param messages - the messages sent to the model
- * @returns a stream of text of the model's response
+ * @param modelProviders
+ * @param system
+ * @param messages
+ * @returns
  */
-async function tryStreamText(models: LanguageModelV3[], system: string, messages: Message[]) {
+async function tryStreamText(
+  modelProviders: LanguageModelV3[],
+  system: string,
+  messages: Message[],
+) {
   let lastError: unknown
 
-  const numberOfModels = models.length
-  for (let index = 0; index < numberOfModels; index++) {
-    const model = models[index]
+  const numberOfProviders = modelProviders.length
+  for (let index = 0; index < numberOfProviders; index++) {
+    const model = modelProviders[index]
     try {
       const result = streamText({
         model,
@@ -45,13 +51,14 @@ async function tryStreamText(models: LanguageModelV3[], system: string, messages
         messages,
         experimental_telemetry: { isEnabled: true },
       })
-      // Force the first chunk to verify the provider actually works
-      const response = result.toTextStreamResponse()
-      return response
+
+      after(async () => await langfuseSpanProcessor.forceFlush())
+
+      return result.toTextStreamResponse()
     } catch (err) {
       lastError = err
       const errorMessage = err instanceof Error ? err.message : String(err)
-      const nextModel = index + 1 < numberOfModels ? models[index + 1] : null
+      const nextModel = index + 1 < numberOfProviders ? modelProviders[index + 1] : null
       const nextModelId = nextModel && 'modelId' in nextModel ? nextModel.modelId : null
 
       if (nextModelId) {
@@ -79,24 +86,23 @@ export const POST = async (req: Request) => {
   }
 
   const { messages, matterId } = parsed.data
-  const resolvedMatterId = matterId ?? 'test-matter-001'
+  const resolvedMatterId = matterId ?? `matter-${Date.now()}`
+
+  const system =
+    'You are a legal workflow assistant helping with conveyancing matters in Australia.'
 
   return propagateAttributes(
     {
-      traceName: 'matter-chat',
+      traceName: 'conveyancing-legal-matter-chat',
       sessionId: resolvedMatterId,
-      userId: 'demo-user',
+      userId: 'no-user',
       version: '1.0',
       metadata: { env: 'demo' },
       tags: ['conversational'],
     },
     async () => {
       try {
-        return await tryStreamText(
-          getModelWithFallbacks(),
-          'You are a legal workflow assistant helping with conveyancing matters in Australia.',
-          messages,
-        )
+        return await tryStreamText(getModelWithFallbacks(), system, messages)
       } catch (err) {
         console.error('All providers failed:', err instanceof Error ? err.message : String(err))
         return new Response('All AI providers are currently unavailable. Please try again later.', {
