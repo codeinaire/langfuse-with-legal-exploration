@@ -6,13 +6,13 @@ A demo project for a Senior Full Stack Engineer interview at the company (ATI Gr
 
 ## Difficulty Scale
 
-| Rating | Meaning |
-|--------|---------|
-| 1/5 | Trivial -- a few hours, minimal risk |
-| 2/5 | Easy -- a focused day or two |
-| 3/5 | Moderate -- multi-day, some coordination between layers/systems |
-| 4/5 | Hard -- significant effort, architectural decisions required |
-| 5/5 | Very Hard -- major undertaking, weeks of work |
+| Rating | Meaning                                                         |
+| ------ | --------------------------------------------------------------- |
+| 1/5    | Trivial -- a few hours, minimal risk                            |
+| 2/5    | Easy -- a focused day or two                                    |
+| 3/5    | Moderate -- multi-day, some coordination between layers/systems |
+| 4/5    | Hard -- significant effort, architectural decisions required    |
+| 5/5    | Very Hard -- major undertaking, weeks of work                   |
 
 ---
 
@@ -20,18 +20,18 @@ A demo project for a Senior Full Stack Engineer interview at the company (ATI Gr
 
 This is a greenfield project. No code exists yet. The baseline is an empty Next.js app.
 
-| Metric | Current | Notes |
-|--------|---------|-------|
-| JS bundle (gzipped) | ~85-100KB | Bare Next.js app with React |
-| Dependencies | 0 project-specific | Only Next.js / React / TypeScript |
-| LLM cost | $0 | No LLM integration |
-| Database | None | No persistence |
-| Observability | None | No tracing or monitoring |
-| Total dev time invested | 0 days | Greenfield |
-| Vercel function duration budget | 300s (Fluid Compute) or 10s (traditional) | Must use streaming for LLM calls |
-| Gemini free tier daily budget | 250 requests/day (2.5 Flash) | Sufficient for demo; not for concurrent users |
-| Neon free tier | 0.5GB storage, 100 CU-hours/month | Orders of magnitude above demo needs |
-| Langfuse free tier | 50,000 units/month | Demo will use <1K |
+| Metric                          | Current                                   | Notes                                         |
+| ------------------------------- | ----------------------------------------- | --------------------------------------------- |
+| JS bundle (gzipped)             | ~85-100KB                                 | Bare Next.js app with React                   |
+| Dependencies                    | 0 project-specific                        | Only Next.js / React / TypeScript             |
+| LLM cost                        | $0                                        | No LLM integration                            |
+| Database                        | None                                      | No persistence                                |
+| Observability                   | None                                      | No tracing or monitoring                      |
+| Total dev time invested         | 0 days                                    | Greenfield                                    |
+| Vercel function duration budget | 300s (Fluid Compute) or 10s (traditional) | Must use streaming for LLM calls              |
+| Gemini free tier daily budget   | 250 requests/day (2.5 Flash)              | Sufficient for demo; not for concurrent users |
+| Neon free tier                  | 0.5GB storage, 100 CU-hours/month         | Orders of magnitude above demo needs          |
+| Langfuse free tier              | 50,000 units/month                        | Demo will use <1K                             |
 
 ---
 
@@ -39,10 +39,10 @@ This is a greenfield project. No code exists yet. The baseline is an empty Next.
 
 1. [Drizzle + Neon Data Layer](#1-drizzle--neon-data-layer) -- 1.5/5
 2. [Langfuse Observability Integration](#2-langfuse-observability-integration) -- 2/5
-3. [Provider-Agnostic LLM Architecture](#3-provider-agnostic-llm-architecture) -- 1.5/5 *(soft dependency on #4)*
-4. [Matter Lifecycle Progression Agent](#4-matter-lifecycle-progression-agent) -- 3/5 *(depends on #1; soft dependency on #2, #3)*
-5. [User Feedback Loop](#5-user-feedback-loop) -- 2/5 *(depends on #2, #4)*
-6. [Prompt Management via Langfuse](#6-prompt-management-via-langfuse) -- 2/5 *(depends on #2, #4)*
+3. [Provider-Agnostic LLM Architecture](#3-provider-agnostic-llm-architecture) -- 1.5/5 _(soft dependency on #4)_
+4. [Matter Lifecycle Progression Agent](#4-matter-lifecycle-progression-agent) -- 3/5 _(depends on #1; soft dependency on #2, #3)_
+5. [User Feedback Loop](#5-user-feedback-loop) -- 2/5 _(depends on #2, #4)_
+6. [Prompt Management via Langfuse](#6-prompt-management-via-langfuse) -- 2/5 _(depends on #2, #4)_
 
 ---
 
@@ -77,24 +77,26 @@ The reason this is 1.5/5 instead of 1/5 is the schema design itself. The matter-
 
 ### Impact Analysis
 
-| Metric | Before | After | Delta |
-|--------|--------|-------|-------|
-| JS bundle (gzipped) | ~85-100KB | ~115-150KB | +30-50KB |
-| Dependencies added | 0 | 2 runtime + 1 dev | `drizzle-orm`, `@neondatabase/serverless`, `drizzle-kit` |
-| Database | None | Neon Postgres (free tier) | Enables persistence for all features |
-| LLM cost | $0 | $0 | No change |
-| Neon storage used | 0 | <1MB | Negligible against 0.5GB free |
+| Metric              | Before    | After                     | Delta                                                    |
+| ------------------- | --------- | ------------------------- | -------------------------------------------------------- |
+| JS bundle (gzipped) | ~85-100KB | ~115-150KB                | +30-50KB                                                 |
+| Dependencies added  | 0         | 2 runtime + 1 dev         | `drizzle-orm`, `@neondatabase/serverless`, `drizzle-kit` |
+| Database            | None      | Neon Postgres (free tier) | Enables persistence for all features                     |
+| LLM cost            | $0        | $0                        | No change                                                |
+| Neon storage used   | 0         | <1MB                      | Negligible against 0.5GB free                            |
 
 This is a foundation feature. Its "impact" is not user-visible on its own -- it enables everything else. Without it, the agent has no state, the UI has no data, and the demo is a stateless chatbot.
 
 ### Broad Todo List
 
 **Database setup:**
+
 - Create a Neon project and database via the Neon console
 - Store the `DATABASE_URL` connection string in `.env.local` and Vercel project settings
 - Install `drizzle-orm`, `@neondatabase/serverless`, and `drizzle-kit`
 
 **Schema:**
+
 - Create `src/db/schema.ts` with tables: `matters`, `matterStages`, `matterActions`, `conversations`
 - Define enums for matter type (e.g., `residential_conveyancing`, `family_law`), stage status (`not_started`, `in_progress`, `completed`), action status
 - Add proper foreign key relationships: matterStages -> matters, matterActions -> matterStages
@@ -102,15 +104,18 @@ This is a foundation feature. Its "impact" is not user-visible on its own -- it 
 - Add a `messages` JSONB column to `conversations` for storing chat history
 
 **Connection:**
+
 - Create `src/db/index.ts` with the Neon HTTP connection and Drizzle instance export
 - Configure `drizzle.config.ts` for `drizzle-kit` pointing to the schema and Neon connection
 
 **Migrations:**
+
 - Run `drizzle-kit generate` to produce the initial migration SQL
 - Run `drizzle-kit migrate` to apply it to the Neon database
 - Commit the generated migration files to the repo
 
 **Seed data:**
+
 - Create a seed script that inserts a residential conveyancing workflow template (10 stages with their standard tasks)
 - Optionally seed a sample matter in progress for demo purposes
 
@@ -154,36 +159,41 @@ The reason this is 2/5 is the OTel wiring nuance. The Langfuse SDK itself is sim
 
 ### Impact Analysis
 
-| Metric | Before | After | Delta |
-|--------|--------|-------|-------|
-| JS bundle (gzipped) | ~115-150KB | ~175-250KB | +60-100KB |
-| Dependencies added | 2+1 | 5+1 | +3 runtime: `@langfuse/tracing`, `@langfuse/otel`, `@opentelemetry/sdk-node` |
-| Observability | None | Full LLM tracing, cost tracking, latency visibility | Qualitative leap |
-| Cloud services | Neon | Neon + Langfuse | One more free-tier account to manage |
-| LLM cost | $0 | $0 | No change |
+| Metric              | Before     | After                                               | Delta                                                                        |
+| ------------------- | ---------- | --------------------------------------------------- | ---------------------------------------------------------------------------- |
+| JS bundle (gzipped) | ~115-150KB | ~175-250KB                                          | +60-100KB                                                                    |
+| Dependencies added  | 2+1        | 5+1                                                 | +3 runtime: `@langfuse/tracing`, `@langfuse/otel`, `@opentelemetry/sdk-node` |
+| Observability       | None       | Full LLM tracing, cost tracking, latency visibility | Qualitative leap                                                             |
+| Cloud services      | Neon       | Neon + Langfuse                                     | One more free-tier account to manage                                         |
+| LLM cost            | $0         | $0                                                  | No change                                                                    |
 
 Note: The bundle delta is primarily from the OTel SDK, which is server-side only. It does not affect the client-side JS bundle that users download. The gzipped figure above represents the server-side function size increase.
 
 ### Broad Todo List
 
 **Langfuse setup:**
+
 - Create a Langfuse cloud account and project at langfuse.com
 - Note the public key, secret key, and host URL
 - Store `LANGFUSE_PUBLIC_KEY`, `LANGFUSE_SECRET_KEY`, and `LANGFUSE_BASEURL` in `.env.local` and Vercel project settings
 
 **Dependencies:**
+
 - Install `@langfuse/tracing`, `@langfuse/otel`, `@opentelemetry/sdk-node`
 
 **Instrumentation:**
+
 - Create `src/instrumentation.ts` (or `instrumentation.node.ts`) that initializes `NodeTracerProvider` with the Langfuse OTel exporter
 - Update `next.config.ts` to enable the `instrumentationHook` experimental feature (or the stable `instrumentation` config if on Next.js 15+)
 - Ensure the AI route handlers use the Node.js runtime (not Edge)
 
 **AI SDK integration:**
+
 - Add `experimental_telemetry: { isEnabled: true }` to all `streamText` / `generateText` calls
 - Pass `sessionId` (linked to the matter ID) in trace metadata for session grouping
 
 **Verification:**
+
 - Make an AI SDK call, check the Langfuse dashboard for the trace
 - Verify spans include: model name, prompt/completion, token counts, latency, tool calls
 - Confirm session grouping works (multiple calls for the same matter appear under one session)
@@ -226,32 +236,36 @@ This is 1.5/5 because the SDK does the hard work. The only design decision is ho
 
 ### Impact Analysis
 
-| Metric | Before | After | Delta |
-|--------|--------|-------|-------|
-| JS bundle (gzipped) | ~175-250KB | ~195-270KB | +~20KB (one additional provider) |
-| Dependencies added | 5+1 | 6+1 | +1: `@ai-sdk/groq` |
-| Provider coverage | 1 (Gemini) | 2 (Gemini + Groq) | Fallback available |
-| Rate limit headroom | 10 RPM / 250 req/day | 10 RPM + 30 RPM / 250 + 1000 req/day | Combined pool if needed |
-| LLM cost | $0 | $0 | Both free tier |
+| Metric              | Before               | After                                | Delta                            |
+| ------------------- | -------------------- | ------------------------------------ | -------------------------------- |
+| JS bundle (gzipped) | ~175-250KB           | ~195-270KB                           | +~20KB (one additional provider) |
+| Dependencies added  | 5+1                  | 6+1                                  | +1: `@ai-sdk/groq`               |
+| Provider coverage   | 1 (Gemini)           | 2 (Gemini + Groq)                    | Fallback available               |
+| Rate limit headroom | 10 RPM / 250 req/day | 10 RPM + 30 RPM / 250 + 1000 req/day | Combined pool if needed          |
+| LLM cost            | $0                   | $0                                   | Both free tier                   |
 
 ### Broad Todo List
 
 **Dependencies:**
+
 - Install `@ai-sdk/groq`
 - Add `GROQ_API_KEY` to `.env.local` and Vercel project settings
 
 **Provider abstraction:**
+
 - Create `src/lib/ai/provider.ts` that exports a `getModel()` function
 - Read `AI_PROVIDER` env var (default: `gemini`) to select the provider
 - Map provider names to AI SDK model constructors: `gemini` -> `google('gemini-2.5-flash')`, `groq` -> `groq('llama-3.3-70b-versatile')`
 - Use `getModel()` in all `streamText` / `generateText` calls instead of direct provider imports
 
 **Verification:**
+
 - Test the agent flow with `AI_PROVIDER=gemini` (primary)
 - Test the agent flow with `AI_PROVIDER=groq` (smoke test -- verify tool calling works, output is coherent)
 - Note any quality differences for discussion during interview
 
 **Optional (stretch):**
+
 - Add a simple settings page or admin panel showing current provider and allowing runtime switch
 - Add per-provider system prompt adjustments if tool-calling behavior diverges significantly
 
@@ -269,7 +283,7 @@ This is the feature where knowing about Mastra and LangGraph (from the scout rep
 
 ### Overview
 
-The core feature. A user selects a matter type (residential conveyancing -- buyer side), the app creates a matter instance with a defined stage workflow, and an AI agent analyzes current state to suggest next actions, flag risks, answer questions, and track progress through stages. Uses the Vercel AI SDK v6 Agent abstraction with tool calling against the database.
+The core feature. A user selects a matter type and what state they want to do it in (residential conveyancing -- buyer side in NSW), the app creates a matter instance with a defined stage workflow, and an AI agent analyzes current state to suggest next actions, flag risks, answer questions, and track progress through stages. Uses the Vercel AI SDK v6 Agent abstraction with tool calling against the database.
 
 ### Pros
 
@@ -291,7 +305,7 @@ The core feature. A user selects a matter type (residential conveyancing -- buye
 
 Three layers: backend (agent definition, tool handlers, API route), database (queries for matter state), and frontend (chat UI, stage progress display).
 
-**Backend:** Define the agent using AI SDK v6's `Agent` class (or the functional equivalent with `streamText` + tools). Write 4-6 tool handler functions that query/mutate the database via Drizzle. Create a Next.js API route (`app/api/chat/route.ts`) that accepts messages and streams the agent's response.
+**Backend:** Define the agent using AI SDK v6's `Agent` class (or the functional equivalent with `streamText` + tools). Write 4-6 tool handler functions that query/mutate the database via Drizzle. Create a Next.js API route (`app/api/chat/route.ts`) that accepts messages and streams the agent's response. Create a state machine to handle the different states and transition between states.
 
 **Database:** The tool handlers execute Drizzle queries: `SELECT` for current stage and tasks, `UPDATE` for marking tasks complete and advancing stages. The schema from feature #1 must support these queries efficiently.
 
@@ -301,27 +315,29 @@ The reason this is 3/5 is the coordination between layers. The agent loop itself
 
 ### Impact Analysis
 
-| Metric | Before | After | Delta |
-|--------|--------|-------|-------|
-| JS bundle (gzipped) | ~195-270KB | ~345-420KB | +~150KB (AI SDK + Google provider + chat UI) |
-| Dependencies added | 6+1 | 8+1 | +2: `ai`, `@ai-sdk/google` |
-| API routes | 0 | 1-2 | `/api/chat`, optionally `/api/matters` |
-| LLM calls per interaction | 0 | 1-5 (agent loop with tool calls) | ~2-5 round trips per user message |
-| Gemini daily budget impact | 0 | ~5-20 requests per demo session | 250/day leaves room for ~12-50 sessions |
-| Database queries per interaction | 0 | 2-10 | Tool handlers read/write matter state |
-| Pages/components | 0 | 3-5 | Home, matter view, chat, stage progress |
+| Metric                           | Before     | After                            | Delta                                        |
+| -------------------------------- | ---------- | -------------------------------- | -------------------------------------------- |
+| JS bundle (gzipped)              | ~195-270KB | ~345-420KB                       | +~150KB (AI SDK + Google provider + chat UI) |
+| Dependencies added               | 6+1        | 8+1                              | +2: `ai`, `@ai-sdk/google`                   |
+| API routes                       | 0          | 1-2                              | `/api/chat`, optionally `/api/matters`       |
+| LLM calls per interaction        | 0          | 1-5 (agent loop with tool calls) | ~2-5 round trips per user message            |
+| Gemini daily budget impact       | 0          | ~5-20 requests per demo session  | 250/day leaves room for ~12-50 sessions      |
+| Database queries per interaction | 0          | 2-10                             | Tool handlers read/write matter state        |
+| Pages/components                 | 0          | 3-5                              | Home, matter view, chat, stage progress      |
 
 Note: The 150KB bundle delta includes the AI SDK runtime and the Google provider package. The `useChat` hook and React components add to the client bundle; the agent logic and tool handlers are server-side only.
 
 ### Broad Todo List
 
 **Agent definition:**
+
 - Create `src/lib/ai/agent.ts` defining the agent's system prompt and tool set
-- Write the system prompt encoding the residential conveyancing workflow (10 stages, stage-specific tasks, transition rules)
+- Write the system prompt encoding the residential conveyancing workflow (10 stages, stage-specific tasks, transition rules, state specific rules as rules probably differ between states)
 - Define tool schemas with Zod: `getCurrentStage`, `getPendingTasks`, `markTaskComplete`, `suggestNextActions`, `getMatterSummary`
 - Optionally add `advanceStage` tool with validation (all tasks in current stage must be complete)
 
 **Tool handlers:**
+
 - Implement `getCurrentStage` -- query matter's current stage and its metadata from DB
 - Implement `getPendingTasks` -- query incomplete actions for the current stage
 - Implement `markTaskComplete` -- update action status, check if stage can advance
@@ -329,13 +345,19 @@ Note: The 150KB bundle delta includes the AI SDK runtime and the Google provider
 - Implement `getMatterSummary` -- aggregate matter state across all stages for agent context
 
 **API route:**
+
 - Create `app/api/chat/route.ts` using `streamText` with the agent's tools and system prompt
 - Accept matter ID and messages in the request body
 - Pass matter ID to tool handlers for scoped queries
 - Use `experimental_telemetry` to enable Langfuse tracing
 - Export `maxDuration` for Vercel Fluid Compute timeout
 
+**Backend -- State Machine:**
+
+- This will have to be filled out in the research phase so the state machine and the ai agent work together to achieve the best result for the user
+
 **Frontend -- Chat:**
+
 - Create a chat component using AI SDK's `useChat` hook connected to the `/api/chat` route
 - Handle streaming responses with a message list display
 - Render markdown in agent responses (install a lightweight markdown renderer)
@@ -343,16 +365,19 @@ Note: The 150KB bundle delta includes the AI SDK runtime and the Google provider
 - Display tool call indicators (e.g., "Checking pending tasks...")
 
 **Frontend -- Matter management:**
+
 - Create a matter creation page/modal (select matter type, enter title, create)
 - Create a matter view page showing stage progress (sidebar or header with stages as a progress tracker)
 - Wire stage progress to poll or refresh after agent interactions
 
 **Frontend -- Stage progress:**
+
 - Build a stage progress component showing all 10 conveyancing stages with status indicators
 - Highlight current stage, show completed stages, dim future stages
 - Optionally show task completion count per stage (e.g., "3/5 tasks complete")
 
 **Prompt iteration:**
+
 - Test the agent with typical user queries: "What should I do next?", "I've received the contract from the vendor's solicitor", "What searches do I need to order?"
 - Refine the system prompt to reduce hallucination and improve domain accuracy
 - Test edge cases: user tries to skip stages, asks about tasks outside current stage, asks for specific legal advice (agent should defer)
@@ -360,11 +385,14 @@ Note: The 150KB bundle delta includes the AI SDK runtime and the Google provider
 ### Additional Notes
 
 The system prompt is the most important artifact in this feature. It should:
+
 1. Define the agent's role ("You are a legal workflow assistant for a residential conveyancing matter")
 2. Encode the workflow stages and their sequence
 3. Instruct the agent to use tools to read state before answering
 4. Instruct the agent to not provide specific legal advice, only workflow guidance
 5. Include Australian legal terminology and context (e.g., PEXA, stamp duty, Land Registry)
+
+But it should also work with the state machine to guide it to what is the appropriate next stage.
 
 The conveyancing workflow data from the scout report (section 6) should be used directly in the system prompt and/or seed data. The 10 stages with their key tasks are well-defined and publicly available.
 
@@ -407,29 +435,32 @@ This is 2/5 because the Langfuse scoring API is simple, but the trace ID plumbin
 
 ### Impact Analysis
 
-| Metric | Before | After | Delta |
-|--------|--------|-------|-------|
-| JS bundle (gzipped) | ~345-420KB | ~345-420KB | +0KB (no new deps) |
-| Dependencies added | 0 | 0 | Uses existing Langfuse SDK |
-| API routes | 1-2 | 2-3 | +1: `/api/feedback` |
-| Langfuse units/interaction | ~1-5 | ~2-6 | +1 unit per score submission |
-| UI components | 3-5 | 4-6 | +1-2: feedback buttons, confirmation indicator |
+| Metric                     | Before     | After      | Delta                                          |
+| -------------------------- | ---------- | ---------- | ---------------------------------------------- |
+| JS bundle (gzipped)        | ~345-420KB | ~345-420KB | +0KB (no new deps)                             |
+| Dependencies added         | 0          | 0          | Uses existing Langfuse SDK                     |
+| API routes                 | 1-2        | 2-3        | +1: `/api/feedback`                            |
+| Langfuse units/interaction | ~1-5       | ~2-6       | +1 unit per score submission                   |
+| UI components              | 3-5        | 4-6        | +1-2: feedback buttons, confirmation indicator |
 
 ### Broad Todo List
 
 **Backend:**
+
 - Create `app/api/feedback/route.ts` accepting `{ traceId, score, comment? }` in POST body
 - Call Langfuse SDK's `score()` method to attach a numeric or categorical score to the trace
 - Return success/error response
 - Add input validation (traceId required, score must be valid)
 
 **Trace ID plumbing:**
+
 - Investigate how AI SDK streaming responses can include metadata (trace ID)
 - Option A: Return trace ID as a custom header in the streaming response
 - Option B: Add a separate endpoint to fetch the trace ID for the latest interaction
 - Wire the trace ID into the chat message state on the frontend
 
 **Frontend:**
+
 - Add thumbs up/down buttons to agent response messages in the chat component
 - Only show buttons on substantive responses (skip tool-call-only messages)
 - On click, call the `/api/feedback` endpoint with the trace ID and score
@@ -437,6 +468,7 @@ This is 2/5 because the Langfuse scoring API is simple, but the trace ID plumbin
 - Disable buttons after submission (prevent double-scoring)
 
 **Verification:**
+
 - Submit a positive and negative score from the UI
 - Check the Langfuse dashboard to confirm scores appear on the correct traces
 - Verify the score is visible in the trace detail view and in any evaluation dashboards
@@ -484,23 +516,25 @@ This is 2/5 because the Langfuse prompt management API is simple (fetch prompt b
 
 ### Impact Analysis
 
-| Metric | Before | After | Delta |
-|--------|--------|-------|-------|
-| JS bundle (gzipped) | ~345-420KB | ~345-420KB | +0KB (no new deps) |
-| Dependencies added | 0 | 0 | Uses existing Langfuse SDK |
-| Latency per agent call | ~0ms prompt loading | +50-200ms (prompt fetch) | Cacheable; imperceptible in demo |
-| Langfuse units/interaction | ~2-6 | ~3-7 | +1 unit per prompt fetch |
-| External service dependencies | Neon + Langfuse | Neon + Langfuse (deeper) | Prompt is now a runtime dependency |
+| Metric                        | Before              | After                    | Delta                              |
+| ----------------------------- | ------------------- | ------------------------ | ---------------------------------- |
+| JS bundle (gzipped)           | ~345-420KB          | ~345-420KB               | +0KB (no new deps)                 |
+| Dependencies added            | 0                   | 0                        | Uses existing Langfuse SDK         |
+| Latency per agent call        | ~0ms prompt loading | +50-200ms (prompt fetch) | Cacheable; imperceptible in demo   |
+| Langfuse units/interaction    | ~2-6                | ~3-7                     | +1 unit per prompt fetch           |
+| External service dependencies | Neon + Langfuse     | Neon + Langfuse (deeper) | Prompt is now a runtime dependency |
 
 ### Broad Todo List
 
 **Langfuse setup:**
+
 - Create a prompt in the Langfuse console named "matter-progression-agent" (or similar)
 - Paste the system prompt text from the agent definition
 - Define template variables (e.g., `matterType`, `currentStageName`) if using dynamic content
 - Set as active version
 
 **Agent modification:**
+
 - Modify `src/lib/ai/agent.ts` to fetch the prompt from Langfuse at the start of each agent call
 - Use the Langfuse SDK's `getPrompt('matter-progression-agent')` method
 - Compile the prompt template with matter-specific variables
@@ -508,11 +542,13 @@ This is 2/5 because the Langfuse prompt management API is simple (fetch prompt b
 - Add optional TTL caching to reduce Langfuse API calls (especially useful if demonstrating multiple rapid interactions)
 
 **Verification:**
+
 - Verify the agent uses the Langfuse-managed prompt (check the trace in Langfuse to see the fetched prompt text)
 - Edit the prompt in Langfuse, make a new agent call, verify the new prompt is used
 - Test the fallback: temporarily use an invalid Langfuse key, verify the agent still works with the hardcoded default
 
 **Demo preparation:**
+
 - Prepare a small prompt edit to perform live during the interview (e.g., change the agent's tone or add a new instruction)
 - Bookmark the Langfuse prompt management page for quick access
 
@@ -526,14 +562,14 @@ Combined with feature #5, the story becomes: "We version prompts, measure their 
 
 ## Summary Table
 
-| # | Feature | Difficulty | Impact | Effort | Bundle Delta (gzipped) | New Deps | Done |
-|---|---------|------------|--------|--------|------------------------|----------|------|
-| 1 | Drizzle + Neon Data Layer | 1.5/5 | Medium | Low | +30-50KB | 2+1 dev | |
-| 2 | Langfuse Observability | 2/5 | High | Low-Medium | +60-100KB * | 3 | |
-| 3 | Provider-Agnostic LLM | 1.5/5 | Medium | Low | +~20KB | 1 | |
-| 4 | Matter Lifecycle Agent | 3/5 | Very High | High | +~150KB | 2 | |
-| 5 | User Feedback Loop | 2/5 | High | Low | +0KB | 0 | |
-| 6 | Prompt Management | 2/5 | High | Low | +0KB | 0 | |
+| #   | Feature                   | Difficulty | Impact    | Effort     | Bundle Delta (gzipped) | New Deps | Done |
+| --- | ------------------------- | ---------- | --------- | ---------- | ---------------------- | -------- | ---- |
+| 1   | Drizzle + Neon Data Layer | 1.5/5      | Medium    | Low        | +30-50KB               | 2+1 dev  |      |
+| 2   | Langfuse Observability    | 2/5        | High      | Low-Medium | +60-100KB \*           | 3        |      |
+| 3   | Provider-Agnostic LLM     | 1.5/5      | Medium    | Low        | +~20KB                 | 1        |      |
+| 4   | Matter Lifecycle Agent    | 3/5        | Very High | High       | +~150KB                | 2        |      |
+| 5   | User Feedback Loop        | 2/5        | High      | Low        | +0KB                   | 0        |      |
+| 6   | Prompt Management         | 2/5        | High      | Low        | +0KB                   | 0        |      |
 
 \* Langfuse/OTel bundle delta is server-side only -- does not affect client JS payload.
 
@@ -545,12 +581,12 @@ Combined with feature #5, the story becomes: "We version prompts, measure their 
 
 ## Watch List
 
-| Feature | Risk | Mitigation |
-|---------|------|------------|
+| Feature                   | Risk                                                                                                                                                                                                                  | Mitigation                                                                                                                                                                                                                                                       |
+| ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 4. Matter Lifecycle Agent | **Prompt quality / domain accuracy.** The agent will generate legal-sounding guidance about Australian conveyancing. If an interviewer has domain expertise and catches an inaccuracy, it undermines the entire demo. | Ground the system prompt heavily in the publicly available conveyancing workflow data. Instruct the agent to caveat suggestions ("In a typical NSW conveyancing matter...") and never present as specific legal advice. Test with a domain reference guide open. |
-| 4. Matter Lifecycle Agent | **Gemini rate limits during live demo.** At 10 RPM on the free tier, a nervous demo with rapid retries could hit the limit. The error state (if unhandled) would break the demo flow. | Implement rate limit error handling in the API route. Use feature #3's provider fallback to switch to Groq if Gemini limits are hit. Keep interactions deliberate during the demo -- prepare a script. |
-| 2. Langfuse Observability | **OTel initialization failures are silent.** If the instrumentation file is misconfigured, the app works fine but no traces appear. This can waste hours debugging "why aren't my traces showing up?" | Follow the example repo exactly. Test tracing immediately after setup -- before building anything else on top of it. Check the Langfuse ingestion logs if traces do not appear. |
-| 6. Prompt Management | **Langfuse latency under demo conditions.** If the Langfuse cloud has a slow moment during the live demo, the prompt fetch could add visible delay. | Implement prompt caching with a 5-minute TTL. Pre-warm the cache by making one agent call before the demo starts. Have the hardcoded fallback ready. |
+| 4. Matter Lifecycle Agent | **Gemini rate limits during live demo.** At 10 RPM on the free tier, a nervous demo with rapid retries could hit the limit. The error state (if unhandled) would break the demo flow.                                 | Implement rate limit error handling in the API route. Use feature #3's provider fallback to switch to Groq if Gemini limits are hit. Keep interactions deliberate during the demo -- prepare a script.                                                           |
+| 2. Langfuse Observability | **OTel initialization failures are silent.** If the instrumentation file is misconfigured, the app works fine but no traces appear. This can waste hours debugging "why aren't my traces showing up?"                 | Follow the example repo exactly. Test tracing immediately after setup -- before building anything else on top of it. Check the Langfuse ingestion logs if traces do not appear.                                                                                  |
+| 6. Prompt Management      | **Langfuse latency under demo conditions.** If the Langfuse cloud has a slow moment during the live demo, the prompt fetch could add visible delay.                                                                   | Implement prompt caching with a 5-minute TTL. Pre-warm the cache by making one agent call before the demo starts. Have the hardcoded fallback ready.                                                                                                             |
 
 ---
 
@@ -595,11 +631,13 @@ Features #5 (User Feedback) and #6 (Prompt Management) are stretch goals that bu
 ```
 
 **Hard dependencies:**
+
 - #4 requires #1 (agent tools query the database)
 - #5 requires #2 and #4 (scoring traces from agent interactions)
 - #6 requires #2 and #4 (fetching prompts for the agent)
 
 **Soft dependencies:**
+
 - #4 benefits from #2 (tracing) and #3 (provider abstraction), but could technically be built without them and have them wired in later
 - #3 is independent but most useful when #4 exists to demonstrate the swap
 
