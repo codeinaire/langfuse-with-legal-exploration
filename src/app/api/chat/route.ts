@@ -1,6 +1,4 @@
 import type { LanguageModelV3 } from '@ai-sdk/provider'
-import { langfuseSpanProcessor } from '@/instrumentation'
-import { getModelWithFallbacks } from '@/lib/ai/model'
 import {
   observe,
   propagateAttributes,
@@ -11,6 +9,8 @@ import { trace } from '@opentelemetry/api'
 import { streamText } from 'ai'
 import { after } from 'next/server'
 import { z } from 'zod'
+import { langfuseSpanProcessor } from '@/instrumentation'
+import { getModelWithFallbacks } from '@/lib/ai/model'
 
 type MessageRole = 'user' | 'assistant' | 'system'
 
@@ -45,7 +45,8 @@ async function tryStreamText(
   const numberOfProviders = modelProviders.length
   for (let index = 0; index < numberOfProviders; index++) {
     const model = modelProviders[index]
-    console.info(`Using model ${model}`)
+    const modelId = 'modelId' in model ? model.modelId : 'unknown'
+    console.info(`Using model: ${modelId}`)
     try {
       const result = streamText({
         model,
@@ -57,17 +58,44 @@ async function tryStreamText(
           setActiveTraceIO({ output: text })
           trace.getActiveSpan()?.end()
         },
-        onError: (error) => {
-          const errorOutput = { error: String(error) }
-          updateActiveObservation({ output: errorOutput })
-          setActiveTraceIO({ output: errorOutput })
-          trace.getActiveSpan()?.end()
+      })
+
+      // Force the provider connection by reading the first chunk.
+      // If the provider is down, rate-limited, or has bad auth,
+      // this is where it fails — allowing the for loop to catch it
+      // and try the next provider.
+      const reader = result.textStream[Symbol.asyncIterator]()
+      const firstChunk = await reader.next()
+
+      if (firstChunk.done) {
+        throw new Error(`${modelId} returned an empty stream`)
+      }
+
+      // Provider works — build a response from the verified first chunk
+      // plus the remaining stream
+      const stream = new ReadableStream({
+        async start(controller) {
+          const encoder = new TextEncoder()
+          controller.enqueue(encoder.encode(firstChunk.value))
+          try {
+            let next = await reader.next()
+            while (!next.done) {
+              controller.enqueue(encoder.encode(next.value))
+              next = await reader.next()
+            }
+          } catch (err) {
+            console.error(`Stream error mid-response from ${modelId}:`, err)
+          } finally {
+            controller.close()
+          }
         },
       })
 
       after(async () => await langfuseSpanProcessor.forceFlush())
 
-      return result.toTextStreamResponse()
+      return new Response(stream, {
+        headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+      })
     } catch (err) {
       lastError = err
       const errorMessage = err instanceof Error ? err.message : String(err)
