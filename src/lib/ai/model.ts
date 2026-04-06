@@ -24,7 +24,7 @@ const FALLBACK_ORDER: Record<AIProvider, AIProvider[]> = {
 const MODEL_MAP: Record<AIProvider, () => LanguageModelV3> = {
 	gemini: () => google("gemini-2.5-flash"),
 	groq: () => groq("meta-llama/llama-4-scout-17b-16e-instruct"),
-	mistral: () => mistral("mistral-small-latest"),
+	mistral: () => mistral("mistral-small-2503"),
 	cerebras: () => cerebras("llama3.1-8b") as unknown as LanguageModelV3,
 	openrouter: () =>
 		openrouter.chat(
@@ -43,6 +43,7 @@ function doesAiProviderExist(aiProvider: string): aiProvider is AIProvider {
 }
 
 let resolvedProvider: AIProvider = DEFAULT_PROVIDER;
+let validated = false;
 
 /**
  * Validates the provided given by the env var is valid, if not it fails gracefully by
@@ -51,7 +52,6 @@ let resolvedProvider: AIProvider = DEFAULT_PROVIDER;
  * @returns void
  */
 export function validateModelProvider(): void {
-	let validated = false;
 	if (validated) return;
 	validated = true;
 	const aiProvider = process.env.AI_PROVIDER ?? DEFAULT_PROVIDER;
