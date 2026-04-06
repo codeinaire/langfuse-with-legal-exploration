@@ -1,45 +1,64 @@
-import { google } from "@ai-sdk/google";
-import { groq } from "@ai-sdk/groq";
-import type { LanguageModelV3 } from "@ai-sdk/provider";
+import { google } from '@ai-sdk/google'
+import { groq } from '@ai-sdk/groq'
+import type { LanguageModelV3 } from '@ai-sdk/provider'
 
-type AIProvider = "gemini" | "groq";
+type AIProvider = 'gemini' | 'groq'
 
-const DEFAULT_PROVIDER: AIProvider = "gemini";
+const DEFAULT_PROVIDER: AIProvider = 'gemini'
 
 const FALLBACK_ORDER: Record<AIProvider, AIProvider[]> = {
-	gemini: ["groq"],
-	groq: ["gemini"],
-};
+  gemini: ['groq'],
+  groq: ['gemini'],
+}
 
 const MODEL_MAP: Record<AIProvider, () => LanguageModelV3> = {
-	gemini: () => google("gemini-2.5-flash"),
-	groq: () => groq("llama-3.3-70b-versatile"),
-};
-
-function isAIProvider(value: string): value is AIProvider {
-	return value in MODEL_MAP;
+  gemini: () => google('gemini-2.5-flash'),
+  groq: () => groq('llama-3.3-70b-versatile'),
 }
 
-let resolvedProvider: AIProvider = DEFAULT_PROVIDER;
+/**
+ * A type guard function that checks whether the ai exists in the model map
+ *
+ * @param aiProvider
+ * @returns boolean
+ */
+function doesAiProviderExist(aiProvider: string): aiProvider is AIProvider {
+  return aiProvider in MODEL_MAP
+}
 
+let resolvedProvider: AIProvider = DEFAULT_PROVIDER
+
+/**
+ * Validates the provided given by the env var is valid, if not it fails gracefully by
+ * using the application hard coded model provider
+ *
+ * @returns void
+ */
 export function validateModelProvider(): void {
-	const raw = process.env.AI_PROVIDER ?? DEFAULT_PROVIDER;
-	if (!isAIProvider(raw)) {
-		console.warn(
-			`Unknown AI_PROVIDER: "${raw}". Valid options are: ${Object.keys(MODEL_MAP).join(", ")}. Falling back to "${DEFAULT_PROVIDER}".`,
-		);
-		resolvedProvider = DEFAULT_PROVIDER;
-		return;
-	}
-	resolvedProvider = raw;
+  let validated = false
+  if (validated) return
+  validated = true
+  const aiProvider = process.env.AI_PROVIDER ?? DEFAULT_PROVIDER
+  if (!doesAiProviderExist(aiProvider)) {
+    console.warn(
+      `Unknown AI_PROVIDER: "${aiProvider}". Valid options are: ${Object.keys(MODEL_MAP).join(', ')}. Falling back to "${DEFAULT_PROVIDER}".`,
+    )
+    resolvedProvider = DEFAULT_PROVIDER
+    return
+  }
+  resolvedProvider = aiProvider
 }
 
-export function getModel(): LanguageModelV3 {
-	return MODEL_MAP[resolvedProvider]();
-}
-
+/**
+ * Validates the current AI provider and returns that in an array
+ * as well as fallback providers if the selected model fails
+ *
+ *
+ * @returns LanguageModelV3
+ */
 export function getModelWithFallbacks(): LanguageModelV3[] {
-	const primary = resolvedProvider;
-	const fallbacks = FALLBACK_ORDER[primary];
-	return [MODEL_MAP[primary](), ...fallbacks.map((p) => MODEL_MAP[p]())];
+  validateModelProvider()
+  const primary = resolvedProvider
+  const fallbacks = FALLBACK_ORDER[primary]
+  return [MODEL_MAP[primary](), ...fallbacks.map((p) => MODEL_MAP[p]())]
 }
