@@ -1,7 +1,13 @@
 import type { LanguageModelV3 } from '@ai-sdk/provider'
 import { langfuseSpanProcessor } from '@/instrumentation'
 import { getModelWithFallbacks } from '@/lib/ai/model'
-import { propagateAttributes } from '@langfuse/tracing'
+import {
+  observe,
+  propagateAttributes,
+  setActiveTraceIO,
+  updateActiveObservation,
+} from '@langfuse/tracing'
+import { trace } from '@opentelemetry/api'
 import { streamText } from 'ai'
 import { after } from 'next/server'
 import { z } from 'zod'
@@ -27,12 +33,7 @@ const chatRequestSchema = z.object({
 
 /**
  * Does a streamText call to the selected model provider but if that fails a fallback
- * model provider is utilised and the the text repsonse is streamed back
- *
- * @param modelProviders
- * @param system
- * @param messages
- * @returns
+ * model provider is utilised and the text response is streamed back
  */
 async function tryStreamText(
   modelProviders: LanguageModelV3[],
@@ -44,12 +45,24 @@ async function tryStreamText(
   const numberOfProviders = modelProviders.length
   for (let index = 0; index < numberOfProviders; index++) {
     const model = modelProviders[index]
+    console.info(`Using model ${model}`)
     try {
       const result = streamText({
         model,
         system,
         messages,
         experimental_telemetry: { isEnabled: true },
+        onFinish: ({ text }) => {
+          updateActiveObservation({ output: text })
+          setActiveTraceIO({ output: text })
+          trace.getActiveSpan()?.end()
+        },
+        onError: (error) => {
+          const errorOutput = { error: String(error) }
+          updateActiveObservation({ output: errorOutput })
+          setActiveTraceIO({ output: errorOutput })
+          trace.getActiveSpan()?.end()
+        },
       })
 
       after(async () => await langfuseSpanProcessor.forceFlush())
@@ -72,7 +85,7 @@ async function tryStreamText(
   throw lastError
 }
 
-export const POST = async (req: Request) => {
+const handler = async (req: Request) => {
   let body: unknown
   try {
     body = await req.json()
@@ -90,6 +103,9 @@ export const POST = async (req: Request) => {
 
   const system =
     'You are a legal workflow assistant helping with conveyancing matters in Australia.'
+
+  updateActiveObservation({ input: { system, messages } })
+  setActiveTraceIO({ input: { system, messages } })
 
   return propagateAttributes(
     {
@@ -112,3 +128,8 @@ export const POST = async (req: Request) => {
     },
   )
 }
+
+export const POST = observe(handler, {
+  name: 'chat-handler',
+  endOnExit: false,
+})
