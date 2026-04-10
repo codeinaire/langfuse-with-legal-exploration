@@ -31,10 +31,8 @@ export async function getPendingActionsForCurrentStage(
       and(
         eq(matterStages.matterId, matterId),
         eq(matterStages.stage, matterRow.currentStage),
-        and(
-          ne(matterActions.status, "completed"),
-          ne(matterActions.status, "skipped"),
-        ),
+        ne(matterActions.status, "completed"),
+        ne(matterActions.status, "skipped"),
       ),
     );
 

@@ -1,21 +1,16 @@
-"use client";
-
-import { useCallback, useEffect, useState } from "react";
-
 interface Stage {
-  id: string;
-  stage: string;
-  status: string;
-  startedAt: Date | string | null;
-  completedAt: Date | string | null;
-  totalActions: number;
-  completedActions: number;
+  id: string
+  stage: string
+  status: string
+  startedAt: Date | string | null
+  completedAt: Date | string | null
+  totalActions: number
+  completedActions: number
 }
 
 interface StageProgressProps {
-  matterId: string;
-  initialStages: Stage[];
-  currentStage: string;
+  stages: Stage[]
+  currentStage: string
 }
 
 /**
@@ -25,51 +20,26 @@ interface StageProgressProps {
 function toDisplayName(enumValue: string): string {
   return enumValue
     .split("_")
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(" ");
+    .map((word) => `${word.charAt(0).toUpperCase()}${word.slice(1)}`)
+    .join(" ")
 }
 
 /**
  * Formats a Date or ISO string to a short date display.
+ *
+ * @example new Date("2026-04-08T10:30:00Z") -> "8 Apr 2026"
  */
 function formatDate(date: Date | string | null | undefined): string {
-  if (!date) return "";
-  const d = typeof date === "string" ? new Date(date) : date;
+  if (!date) return ""
+  const d = typeof date === "string" ? new Date(date) : date
   return d.toLocaleDateString("en-AU", {
     day: "numeric",
     month: "short",
     year: "numeric",
-  });
+  })
 }
 
-export function StageProgress({
-  matterId,
-  initialStages,
-  currentStage: initialCurrentStage,
-}: StageProgressProps) {
-  const [stages, setStages] = useState<Stage[]>(initialStages);
-  const [currentStage, setCurrentStage] = useState(initialCurrentStage);
-
-  const refresh = useCallback(async () => {
-    try {
-      const res = await fetch(`/api/matters/${matterId}`);
-      if (!res.ok) return;
-      const data = await res.json();
-      setStages(data.stages);
-      setCurrentStage(data.matter.currentStage);
-    } catch {
-      // Silently fail -- stale data is better than an error
-    }
-  }, [matterId]);
-
-  // Expose refresh to the parent via a custom event
-  useEffect(() => {
-    const handler = () => refresh();
-    window.addEventListener(`matter-${matterId}-refresh`, handler);
-    return () =>
-      window.removeEventListener(`matter-${matterId}-refresh`, handler);
-  }, [matterId, refresh]);
-
+export function StageProgress({ stages, currentStage }: StageProgressProps) {
   return (
     <div className="p-4">
       <h2 className="mb-4 text-sm font-semibold text-gray-700">
@@ -77,8 +47,8 @@ export function StageProgress({
       </h2>
       <ol className="space-y-1">
         {stages.map((stage, index) => {
-          const isCompleted = stage.status === "completed";
-          const isCurrent = stage.stage === currentStage;
+          const isCompleted = stage.status === "completed"
+          const isCurrent = stage.stage === currentStage
 
           return (
             <li key={stage.id} className="flex gap-3">
@@ -151,18 +121,9 @@ export function StageProgress({
                 )}
               </div>
             </li>
-          );
+          )
         })}
       </ol>
-
-      {/* Refresh button */}
-      <button
-        type="button"
-        onClick={refresh}
-        className="mt-4 w-full rounded border border-gray-200 bg-white px-2 py-1 text-xs text-gray-500 hover:bg-gray-50"
-      >
-        Refresh
-      </button>
     </div>
-  );
+  )
 }

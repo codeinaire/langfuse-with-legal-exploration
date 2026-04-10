@@ -1,17 +1,17 @@
-"use client";
+"use client"
 
-import type { UIMessage } from "ai";
-import { isTextUIPart, isToolUIPart } from "ai";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
-import { ToolIndicator } from "./tool-indicator";
+import type { UIMessage } from "ai"
+import { isTextUIPart, isToolUIPart } from "ai"
+import ReactMarkdown from "react-markdown"
+import remarkGfm from "remark-gfm"
+import { ToolIndicator } from "./tool-indicator"
 
 interface MessageProps {
-  message: UIMessage;
+  message: UIMessage
 }
 
 export function Message({ message }: MessageProps) {
-  const isUser = message.role === "user";
+  const isUser = message.role === "user"
 
   return (
     <div className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
@@ -34,30 +34,29 @@ export function Message({ message }: MessageProps) {
           // Assistant messages: render each part
           <div className="space-y-2">
             {message.parts.map((part, partIndex) => {
+              const key = `text-${part.type}-${partIndex}`
               if (isTextUIPart(part)) {
                 return (
                   <div
-                    // biome-ignore lint/suspicious/noArrayIndexKey: message parts are positional and have no stable id
-                    key={`text-${partIndex}`}
+                    key={key}
                     className="markdown-body text-sm text-gray-800"
                   >
                     <ReactMarkdown remarkPlugins={[remarkGfm]}>
                       {part.text}
                     </ReactMarkdown>
                   </div>
-                );
+                )
               }
 
               if (isToolUIPart(part)) {
-                // biome-ignore lint/suspicious/noArrayIndexKey: message parts are positional and have no stable id
-                return <ToolIndicator key={`tool-${partIndex}`} part={part} />;
+                return <ToolIndicator key={key} part={part} />
               }
 
-              return null;
+              return null
             })}
           </div>
         )}
       </div>
     </div>
-  );
+  )
 }

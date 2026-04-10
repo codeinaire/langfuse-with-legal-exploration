@@ -66,8 +66,7 @@ export default async function MatterPage({ params }: MatterPageProps) {
         {/* Stage progress sidebar */}
         <aside className="w-72 shrink-0 border-r bg-gray-50">
           <StageProgress
-            matterId={id}
-            initialStages={stages}
+            stages={stages}
             currentStage={resolvedMatter.currentStage}
           />
         </aside>

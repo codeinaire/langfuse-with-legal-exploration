@@ -1,12 +1,8 @@
-import { and, count, eq, sql } from "drizzle-orm";
-import type { db as DbInstance } from "@/db";
-import {
-  conveyancingStageEnum,
-  matterActions,
-  matterStages,
-} from "@/db/schema";
+import { and, count, eq, sql } from "drizzle-orm"
+import type { db as DbInstance } from "@/db"
+import { conveyancingStageEnum, matterActions, matterStages } from "@/db/schema"
 
-type ConveyancingStage = (typeof conveyancingStageEnum.enumValues)[number];
+type ConveyancingStage = (typeof conveyancingStageEnum.enumValues)[number]
 
 /**
  * Returns a specific stage and all its actions for a matter.
@@ -24,14 +20,14 @@ export async function getStageWithActions(
     with: {
       matterActions: true,
     },
-  });
+  })
 
-  if (!stage) return null;
+  if (!stage) return null
 
-  const totalActions = stage.matterActions.length;
+  const totalActions = stage.matterActions.length
   const completedActions = stage.matterActions.filter(
     (a) => a.status === "completed" || a.status === "skipped",
-  ).length;
+  ).length
 
   return {
     stageStatus: stage.status,
@@ -46,7 +42,7 @@ export async function getStageWithActions(
     })),
     totalActions,
     completedActions,
-  };
+  }
 }
 
 /**
@@ -64,7 +60,7 @@ export async function getAllStages(db: typeof DbInstance, matterId: string) {
       completedAt: matterStages.completedAt,
     })
     .from(matterStages)
-    .where(eq(matterStages.matterId, matterId));
+    .where(eq(matterStages.matterId, matterId))
 
   // Get action counts per stage
   const actionCounts = await db
@@ -76,23 +72,23 @@ export async function getAllStages(db: typeof DbInstance, matterId: string) {
     .from(matterActions)
     .innerJoin(matterStages, eq(matterActions.matterStageId, matterStages.id))
     .where(eq(matterStages.matterId, matterId))
-    .groupBy(matterActions.matterStageId);
+    .groupBy(matterActions.matterStageId)
 
   const countsByStageId = new Map(
     actionCounts.map((r) => [
       r.matterStageId,
       { total: Number(r.total), completed: Number(r.completed) },
     ]),
-  );
+  )
 
   // Sort by enum order
-  const enumOrder = conveyancingStageEnum.enumValues;
+  const enumOrder = conveyancingStageEnum.enumValues
   const sorted = [...stageRows].sort(
     (a, b) => enumOrder.indexOf(a.stage) - enumOrder.indexOf(b.stage),
-  );
+  )
 
   return sorted.map((s) => {
-    const counts = countsByStageId.get(s.id) ?? { total: 0, completed: 0 };
+    const counts = countsByStageId.get(s.id) ?? { total: 0, completed: 0 }
     return {
       id: s.id,
       stage: s.stage,
@@ -101,8 +97,8 @@ export async function getAllStages(db: typeof DbInstance, matterId: string) {
       completedAt: s.completedAt,
       totalActions: counts.total,
       completedActions: counts.completed,
-    };
-  });
+    }
+  })
 }
 
 /**
@@ -112,10 +108,11 @@ export async function getAllStages(db: typeof DbInstance, matterId: string) {
 export function getNextStage(
   currentStage: ConveyancingStage,
 ): ConveyancingStage | null {
-  const enumValues = conveyancingStageEnum.enumValues;
-  const currentIndex = enumValues.indexOf(currentStage);
+  const enumValues = conveyancingStageEnum.enumValues
+  const currentIndex = enumValues.indexOf(currentStage)
   if (currentIndex === -1 || currentIndex === enumValues.length - 1) {
-    return null;
+    return null
   }
-  return enumValues[currentIndex + 1];
+  const nextStageIndex = currentIndex + 1
+  return enumValues[nextStageIndex]
 }

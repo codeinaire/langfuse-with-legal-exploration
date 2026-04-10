@@ -1,66 +1,62 @@
-"use client";
+"use client"
 
-import { useChat } from "@ai-sdk/react";
-import type { UIMessage } from "ai";
-import { TextStreamChatTransport } from "ai";
-import { useEffect, useMemo, useRef, useState } from "react";
-import { Message } from "./message";
+import { useChat } from "@ai-sdk/react"
+import type { UIMessage } from "ai"
+import { DefaultChatTransport } from "ai"
+import { useRouter } from "next/navigation"
+import { useEffect, useMemo, useRef, useState } from "react"
+import { Message } from "./message"
 
 interface ChatPanelProps {
-  matterId: string;
-  pendingActionsCount: number;
-  onAgentFinished?: () => void;
+  matterId: string
+  pendingActionsCount: number
 }
 
-export function ChatPanel({
-  matterId,
-  pendingActionsCount,
-  onAgentFinished,
-}: ChatPanelProps) {
-  const [inputValue, setInputValue] = useState("");
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+export function ChatPanel({ matterId, pendingActionsCount }: ChatPanelProps) {
+  const [inputValue, setInputValue] = useState("")
+  const messagesEndRef = useRef<HTMLDivElement>(null)
+  const router = useRouter()
 
   const transport = useMemo(
     () =>
-      new TextStreamChatTransport({
+      new DefaultChatTransport({
         api: "/api/chat",
         body: { matterId },
       }),
     [matterId],
-  );
+  )
 
   const { messages, sendMessage, status, error } = useChat({
     transport,
-  });
+  })
 
   // Auto-scroll to bottom when new messages arrive
-  // biome-ignore lint/correctness/useExhaustiveDependencies: scroll must trigger when messages change
+  const prevMessageCount = useRef(0)
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+    if (messages.length > prevMessageCount.current) {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
+    }
+    prevMessageCount.current = messages.length
+  }, [messages.length])
 
-  // Notify parent when agent finishes responding and trigger stage refresh.
-  // Only fire after messages have been exchanged (not on initial mount).
+  // Re-render server components when agent finishes responding
+  // so StageProgress gets fresh data from the server.
   useEffect(() => {
     if (status === "ready" && messages.length > 0) {
-      // Dispatch a custom event so StageProgress can refresh
-      window.dispatchEvent(new CustomEvent(`matter-${matterId}-refresh`));
-      if (onAgentFinished) {
-        onAgentFinished();
-      }
+      router.refresh()
     }
-  }, [status, matterId, messages.length, onAgentFinished]);
+  }, [status, messages.length, router])
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const trimmed = inputValue.trim();
-    if (!trimmed || status === "streaming") return;
+  const handleSubmit = (e: React.SubmitEvent) => {
+    e.preventDefault()
+    const trimmed = inputValue.trim()
+    if (!trimmed || status === "streaming") return
 
-    sendMessage({ role: "user", parts: [{ type: "text", text: trimmed }] });
-    setInputValue("");
-  };
+    sendMessage({ role: "user", parts: [{ type: "text", text: trimmed }] })
+    setInputValue("")
+  }
 
-  const isStreaming = status === "streaming";
+  const isStreaming = status === "streaming"
 
   return (
     <div className="flex h-full flex-col">
@@ -95,7 +91,7 @@ export function ChatPanel({
                         text: "What is the current status of this matter?",
                       },
                     ],
-                  });
+                  })
                 }}
               >
                 &ldquo;What is the current status of this matter?&rdquo;
@@ -107,7 +103,7 @@ export function ChatPanel({
                   sendMessage({
                     role: "user",
                     parts: [{ type: "text", text: "What should I do next?" }],
-                  });
+                  })
                 }}
               >
                 &ldquo;What should I do next?&rdquo;
@@ -121,7 +117,7 @@ export function ChatPanel({
       {messages.length > 0 && (
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
           {messages.map((message) => (
-            <Message key={message.id} message={message as UIMessage} />
+            <Message key={message.id} message={message} />
           ))}
           {isStreaming && (
             <div className="flex items-center gap-2 text-sm text-gray-400">
@@ -164,5 +160,5 @@ export function ChatPanel({
         </p>
       </div>
     </div>
-  );
+  )
 }

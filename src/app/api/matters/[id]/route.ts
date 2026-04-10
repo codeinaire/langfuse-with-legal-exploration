@@ -1,7 +1,10 @@
+import { z } from "zod";
 import { db } from "@/db";
 import { getPendingActionsForCurrentStage } from "@/lib/db/queries/actions";
 import { getMatterWithCurrentStage } from "@/lib/db/queries/matters";
 import { getAllStages } from "@/lib/db/queries/stages";
+
+const idSchema = z.uuid();
 
 export async function GET(
   _req: Request,
@@ -9,10 +12,7 @@ export async function GET(
 ) {
   const { id } = await params;
 
-  // Basic UUID validation
-  const uuidRegex =
-    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-  if (!uuidRegex.test(id)) {
+  if (!idSchema.safeParse(id).success) {
     return new Response("Invalid matter ID", { status: 400 });
   }
 

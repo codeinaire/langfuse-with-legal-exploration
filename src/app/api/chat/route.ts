@@ -1,25 +1,25 @@
-import type { LanguageModelV3 } from "@ai-sdk/provider";
+import type { LanguageModelV3 } from "@ai-sdk/provider"
 import {
   observe,
   propagateAttributes,
   setActiveTraceIO,
   updateActiveObservation,
-} from "@langfuse/tracing";
-import { trace } from "@opentelemetry/api";
-import type { UIMessage } from "ai";
-import { convertToModelMessages, stepCountIs, streamText } from "ai";
-import { after } from "next/server";
-import { z } from "zod";
-import { db } from "@/db";
-import { langfuseSpanProcessor } from "@/instrumentation";
-import { getModelWithFallbacks } from "@/lib/ai/model";
-import { CONVEYANCING_SYSTEM_PROMPT } from "@/lib/ai/prompts";
-import { conveyancingTools } from "@/lib/ai/tools";
+} from "@langfuse/tracing"
+import { trace } from "@opentelemetry/api"
+import type { UIMessage } from "ai"
+import { convertToModelMessages, stepCountIs, streamText } from "ai"
+import { after } from "next/server"
+import { z } from "zod"
+import { db } from "@/db"
+import { langfuseSpanProcessor } from "@/instrumentation"
+import { getModelWithFallbacks } from "@/lib/ai/model"
+import { CONVEYANCING_SYSTEM_PROMPT } from "@/lib/ai/prompts"
+import { conveyancingTools } from "@/lib/ai/tools"
 
 // Next.js route segment config -- multi-step agent can take >15 seconds
-export const maxDuration = 60;
+export const maxDuration = 60
 
-const uiMessagePartSchema = z.object({ type: z.string() }).passthrough();
+const uiMessagePartSchema = z.looseObject({ type: z.string() })
 
 const chatRequestSchema = z.object({
   messages: z
@@ -34,7 +34,7 @@ const chatRequestSchema = z.object({
     )
     .min(1, "messages must be a non-empty array"),
   matterId: z.uuid("matterId must be a valid UUID"),
-});
+})
 
 /**
  * Streams a UIMessage response using the given model providers in order.
@@ -49,15 +49,15 @@ async function tryStreamText(
   uiMessages: UIMessage[],
   agentContext: { matterId: string; db: typeof db },
 ) {
-  let lastError: unknown;
+  let lastError: unknown
 
-  const modelMessages = await convertToModelMessages(uiMessages);
-  const numberOfProviders = modelProviders.length;
+  const modelMessages = await convertToModelMessages(uiMessages)
+  const numberOfProviders = modelProviders.length
 
   for (let index = 0; index < numberOfProviders; index++) {
-    const model = modelProviders[index];
-    const modelId = "modelId" in model ? model.modelId : "unknown";
-    console.info(`Using model: ${modelId}`);
+    const model = modelProviders[index]
+    const modelId = "modelId" in model ? model.modelId : "unknown"
+    console.info(`Using model: ${modelId}`)
     try {
       const result = streamText({
         model,
@@ -68,60 +68,60 @@ async function tryStreamText(
         experimental_context: agentContext,
         experimental_telemetry: { isEnabled: true },
         onFinish: ({ text }) => {
-          updateActiveObservation({ output: text });
-          setActiveTraceIO({ output: text });
-          trace.getActiveSpan()?.end();
+          updateActiveObservation({ output: text })
+          setActiveTraceIO({ output: text })
+          trace.getActiveSpan()?.end()
         },
-      });
+      })
 
-      after(async () => await langfuseSpanProcessor.forceFlush());
+      after(async () => await langfuseSpanProcessor.forceFlush())
 
-      return result.toUIMessageStreamResponse();
+      return result.toUIMessageStreamResponse()
     } catch (err) {
-      lastError = err;
-      const errorMessage = err instanceof Error ? err.message : String(err);
+      lastError = err
+      const errorMessage = err instanceof Error ? err.message : String(err)
       const nextModel =
-        index + 1 < numberOfProviders ? modelProviders[index + 1] : null;
+        index + 1 < numberOfProviders ? modelProviders[index + 1] : null
       const nextModelId =
-        nextModel && "modelId" in nextModel ? nextModel.modelId : null;
+        nextModel && "modelId" in nextModel ? nextModel.modelId : null
 
       if (nextModelId) {
         console.warn(
           `Provider failed, trying ${nextModelId} as fallback: ${errorMessage}`,
-        );
+        )
       } else {
         console.warn(
           `Provider failed, no more fallbacks available: ${errorMessage}`,
-        );
+        )
       }
     }
   }
 
-  throw lastError;
+  throw lastError
 }
 
 const handler = async (req: Request) => {
-  let body: unknown;
+  let body: unknown
   try {
-    body = await req.json();
+    body = await req.json()
   } catch {
-    return new Response("Invalid JSON", { status: 400 });
+    return new Response("Invalid JSON", { status: 400 })
   }
 
-  const parsed = chatRequestSchema.safeParse(body);
+  const parsed = chatRequestSchema.safeParse(body)
   if (!parsed.success) {
-    return new Response(parsed.error.issues[0].message, { status: 400 });
+    return new Response(parsed.error.issues[0].message, { status: 400 })
   }
 
-  const { messages, matterId } = parsed.data;
-  const uiMessages = messages as UIMessage[];
+  const { messages, matterId } = parsed.data
+  const uiMessages = messages as UIMessage[]
 
-  const agentContext = { matterId, db };
+  const agentContext = { matterId, db }
 
   updateActiveObservation({
     input: { system: CONVEYANCING_SYSTEM_PROMPT, messages },
-  });
-  setActiveTraceIO({ input: { system: CONVEYANCING_SYSTEM_PROMPT, messages } });
+  })
+  setActiveTraceIO({ input: { system: CONVEYANCING_SYSTEM_PROMPT, messages } })
 
   return propagateAttributes(
     {
@@ -139,22 +139,22 @@ const handler = async (req: Request) => {
           CONVEYANCING_SYSTEM_PROMPT,
           uiMessages,
           agentContext,
-        );
+        )
       } catch (err) {
         console.error(
           "All providers failed:",
           err instanceof Error ? err.message : String(err),
-        );
+        )
         return new Response(
           "All AI providers are currently unavailable. Please try again later.",
           { status: 503 },
-        );
+        )
       }
     },
-  );
-};
+  )
+}
 
 export const POST = observe(handler, {
   name: "chat-handler",
   endOnExit: false,
-});
+})
