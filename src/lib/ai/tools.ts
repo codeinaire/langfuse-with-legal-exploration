@@ -1,13 +1,13 @@
-import { tool } from "ai";
-import { z } from "zod";
+import { tool } from "ai"
+import { z } from "zod"
 import {
   getPendingActionsForCurrentStage,
   markActionComplete,
-} from "@/lib/db/queries/actions";
-import { getMatterWithCurrentStage } from "@/lib/db/queries/matters";
-import { getAllStages, getStageWithActions } from "@/lib/db/queries/stages";
-import { tryAdvanceStage } from "@/lib/state-machine/conveyancing";
-import { getAgentContext } from "./agent-context";
+} from "@/lib/db/queries/actions"
+import { getMatterWithCurrentStage } from "@/lib/db/queries/matters"
+import { getAllStages, getStageWithActions } from "@/lib/db/queries/stages"
+import { tryAdvanceStage } from "@/lib/state-machine/conveyancing"
+import { getAgentContext } from "./agent-context"
 
 /**
  * 1. Get the matter's current stage and summary info.
@@ -17,10 +17,10 @@ const getCurrentStage = tool({
     "Get the current stage of the conveyancing matter, including property address, matter reference, and stage status. Always call this before answering questions about the matter's status.",
   inputSchema: z.object({}),
   execute: async (_input, options) => {
-    const { matterId, db } = getAgentContext(options);
-    const matter = await getMatterWithCurrentStage(db, matterId);
+    const { matterId, db } = getAgentContext(options)
+    const matter = await getMatterWithCurrentStage(db, matterId)
     if (!matter) {
-      return "Matter not found.";
+      return "Matter not found."
     }
     return {
       referenceNumber: matter.referenceNumber,
@@ -29,9 +29,9 @@ const getCurrentStage = tool({
       propertyAddress: `${matter.streetAddress}, ${matter.suburb} ${matter.state.toUpperCase()} ${matter.postcode}`,
       matterStatus: matter.status,
       stageStartedAt: matter.stageStartedAt?.toISOString() ?? null,
-    };
+    }
   },
-});
+})
 
 /**
  * 2. Get pending (incomplete) tasks for the current stage.
@@ -41,19 +41,19 @@ const getPendingTasks = tool({
     "Get all pending (not completed or skipped) tasks for the matter's current stage. Always call this before advising on next steps or completing tasks.",
   inputSchema: z.object({}),
   execute: async (_input, options) => {
-    const { matterId, db } = getAgentContext(options);
-    const pendingActions = await getPendingActionsForCurrentStage(db, matterId);
+    const { matterId, db } = getAgentContext(options)
+    const pendingActions = await getPendingActionsForCurrentStage(db, matterId)
     if (pendingActions.length === 0) {
-      return "No pending tasks for the current stage. All tasks are completed or skipped.";
+      return "No pending tasks for the current stage. All tasks are completed or skipped."
     }
     return pendingActions.map((a) => ({
       id: a.id,
       description: a.description,
       status: a.status,
       dueDate: a.dueDate?.toISOString() ?? null,
-    }));
+    }))
   },
-});
+})
 
 /**
  * 3. Mark a specific task as complete.
@@ -65,25 +65,25 @@ const markTaskComplete = tool({
     actionId: z.uuid().describe("The UUID of the action to mark as complete"),
   }),
   execute: async (input, options) => {
-    const { matterId, db } = getAgentContext(options);
+    const { matterId, db } = getAgentContext(options)
     try {
-      const updated = await markActionComplete(db, input.actionId, matterId);
+      const updated = await markActionComplete(db, input.actionId, matterId)
       return {
         success: true,
         actionId: updated.id,
         description: updated.description,
         status: updated.status,
         completedAt: updated.completedAt?.toISOString() ?? null,
-      };
+      }
     } catch (err) {
       // Return error as a string so the LLM sees it, not an uncaught exception
       return {
         success: false,
         error: err instanceof Error ? err.message : String(err),
-      };
+      }
     }
   },
-});
+})
 
 /**
  * 4. Get a full matter summary with all 10 stages.
@@ -93,12 +93,12 @@ const getMatterSummary = tool({
     "Get a full summary of the matter including all 10 conveyancing stages with their statuses and task completion counts. Use this to give the user an overview of progress.",
   inputSchema: z.object({}),
   execute: async (_input, options) => {
-    const { matterId, db } = getAgentContext(options);
-    const matter = await getMatterWithCurrentStage(db, matterId);
+    const { matterId, db } = getAgentContext(options)
+    const matter = await getMatterWithCurrentStage(db, matterId)
     if (!matter) {
-      return "Matter not found.";
+      return "Matter not found."
     }
-    const stages = await getAllStages(db, matterId);
+    const stages = await getAllStages(db, matterId)
     return {
       referenceNumber: matter.referenceNumber,
       title: matter.title,
@@ -112,9 +112,9 @@ const getMatterSummary = tool({
         startedAt: s.startedAt?.toISOString() ?? null,
         completedAt: s.completedAt?.toISOString() ?? null,
       })),
-    };
+    }
   },
-});
+})
 
 /**
  * 5. Suggest prioritised next actions with contextual guidance.
@@ -124,21 +124,21 @@ const suggestNextActions = tool({
     "Get prioritised suggestions for next actions in the current stage, including guidance on timing and risks. Use this to proactively guide the user.",
   inputSchema: z.object({}),
   execute: async (_input, options) => {
-    const { matterId, db } = getAgentContext(options);
-    const matter = await getMatterWithCurrentStage(db, matterId);
+    const { matterId, db } = getAgentContext(options)
+    const matter = await getMatterWithCurrentStage(db, matterId)
     if (!matter) {
-      return "Matter not found.";
+      return "Matter not found."
     }
 
-    const pending = await getPendingActionsForCurrentStage(db, matterId);
+    const pending = await getPendingActionsForCurrentStage(db, matterId)
     const stageDetails = await getStageWithActions(
       db,
       matterId,
       matter.currentStage,
-    );
+    )
 
     if (!stageDetails) {
-      return "Stage details not found.";
+      return "Stage details not found."
     }
 
     if (pending.length === 0) {
@@ -146,7 +146,7 @@ const suggestNextActions = tool({
         message:
           "All tasks in the current stage are complete. Consider advancing to the next stage.",
         pendingActions: [],
-      };
+      }
     }
 
     // Attach context-aware guidance per action
@@ -177,7 +177,7 @@ const suggestNextActions = tool({
         "Priority: Book PEXA workspace as early as possible — other parties need to accept.",
       "Log into PEXA settlement workspace":
         "Critical: Verify all figures in PEXA at least 24 hours before settlement.",
-    };
+    }
 
     return {
       currentStage: matter.currentStage,
@@ -191,9 +191,9 @@ const suggestNextActions = tool({
           contextualGuidance[a.description] ??
           "Complete this task to progress the stage.",
       })),
-    };
+    }
   },
-});
+})
 
 /**
  * 6. Advance the matter to the next conveyancing stage (state machine enforced).
@@ -203,11 +203,11 @@ const advanceStage = tool({
     "Advance the matter to the next conveyancing stage. The state machine will verify all tasks in the current stage are complete before allowing advancement. Use this when the user wants to progress to the next stage.",
   inputSchema: z.object({}),
   execute: async (_input, options) => {
-    const { matterId, db } = getAgentContext(options);
-    const result = await tryAdvanceStage(db, matterId);
-    return result;
+    const { matterId, db } = getAgentContext(options)
+    const result = await tryAdvanceStage(db, matterId)
+    return result
   },
-});
+})
 
 /**
  * All 6 conveyancing agent tools, keyed for use in streamText.
@@ -219,4 +219,4 @@ export const conveyancingTools = {
   getMatterSummary,
   suggestNextActions,
   advanceStage,
-};
+}

@@ -1,6 +1,6 @@
-import { and, eq } from "drizzle-orm";
-import type { db as DbInstance } from "@/db";
-import { matterStages, matters, properties } from "@/db/schema";
+import { and, eq } from "drizzle-orm"
+import type { db as DbInstance } from "@/db"
+import { matterStages, matters, properties } from "@/db/schema"
 
 /**
  * Returns a matter's core details joined with its current stage and property.
@@ -34,7 +34,7 @@ export async function getMatterWithCurrentStage(
       ),
     )
     .where(eq(matters.id, matterId))
-    .limit(1);
+    .limit(1)
 
-  return result[0] ?? null;
+  return result[0] ?? null
 }

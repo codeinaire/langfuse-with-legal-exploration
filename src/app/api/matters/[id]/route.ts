@@ -1,29 +1,29 @@
-import { z } from "zod";
-import { db } from "@/db";
-import { getPendingActionsForCurrentStage } from "@/lib/db/queries/actions";
-import { getMatterWithCurrentStage } from "@/lib/db/queries/matters";
-import { getAllStages } from "@/lib/db/queries/stages";
+import { z } from "zod"
+import { db } from "@/db"
+import { getPendingActionsForCurrentStage } from "@/lib/db/queries/actions"
+import { getMatterWithCurrentStage } from "@/lib/db/queries/matters"
+import { getAllStages } from "@/lib/db/queries/stages"
 
-const idSchema = z.uuid();
+const idSchema = z.uuid()
 
 export async function GET(
   _req: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const { id } = await params;
+  const { id } = await params
 
   if (!idSchema.safeParse(id).success) {
-    return new Response("Invalid matter ID", { status: 400 });
+    return new Response("Invalid matter ID", { status: 400 })
   }
 
   const [matter, stages, pendingActions] = await Promise.all([
     getMatterWithCurrentStage(db, id),
     getAllStages(db, id),
     getPendingActionsForCurrentStage(db, id),
-  ]);
+  ])
 
   if (!matter) {
-    return new Response("Matter not found", { status: 404 });
+    return new Response("Matter not found", { status: 404 })
   }
 
   return Response.json({
@@ -38,5 +38,5 @@ export async function GET(
     },
     stages,
     pendingActions,
-  });
+  })
 }

@@ -1,35 +1,35 @@
-import { notFound } from "next/navigation";
-import { ChatPanel } from "@/components/chat/chat-panel";
-import { StageProgress } from "@/components/matter/stage-progress";
-import { db } from "@/db";
-import { getMatterWithCurrentStage } from "@/lib/db/queries/matters";
-import { getAllStages, getStageWithActions } from "@/lib/db/queries/stages";
+import { notFound } from "next/navigation"
+import { ChatPanel } from "@/components/chat/chat-panel"
+import { StageProgress } from "@/components/matter/stage-progress"
+import { db } from "@/db"
+import { getMatterWithCurrentStage } from "@/lib/db/queries/matters"
+import { getAllStages, getStageWithActions } from "@/lib/db/queries/stages"
 
 interface MatterPageProps {
-  params: Promise<{ id: string }>;
+  params: Promise<{ id: string }>
 }
 
 export default async function MatterPage({ params }: MatterPageProps) {
-  const { id } = await params;
+  const { id } = await params
 
   const [matter, stages] = await Promise.all([
     getMatterWithCurrentStage(db, id),
     getAllStages(db, id),
-  ]);
+  ])
 
   if (!matter) {
-    notFound();
+    notFound()
   }
 
   // notFound() throws, so matter is non-null beyond this point.
   // TypeScript doesn't narrow through notFound(), so we use a local variable.
-  const resolvedMatter = matter as NonNullable<typeof matter>;
+  const resolvedMatter = matter as NonNullable<typeof matter>
 
   const currentStageDetails = await getStageWithActions(
     db,
     id,
     resolvedMatter.currentStage,
-  );
+  )
 
   return (
     <main className="flex min-h-screen flex-col">
@@ -84,5 +84,5 @@ export default async function MatterPage({ params }: MatterPageProps) {
         </div>
       </div>
     </main>
-  );
+  )
 }

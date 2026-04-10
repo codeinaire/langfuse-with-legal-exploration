@@ -1,26 +1,26 @@
-import dotenv from "dotenv";
+import dotenv from "dotenv"
 
-dotenv.config({ path: ".env.local" });
+dotenv.config({ path: ".env.local" })
 
-import { neon } from "@neondatabase/serverless";
-import { sql as rawSql } from "drizzle-orm";
-import { drizzle } from "drizzle-orm/neon-http";
-import * as schema from "./schema";
+import { neon } from "@neondatabase/serverless"
+import { sql as rawSql } from "drizzle-orm"
+import { drizzle } from "drizzle-orm/neon-http"
+import * as schema from "./schema"
 
 // ─── Standalone DB instance ───────────────────────────────────────────────────
 // DO NOT import from src/db/index.ts -- module-level process.env.DATABASE_URL
 // may not be set before dotenv.config() runs when using tsx directly.
 
-const databaseUrl = process.env.DATABASE_URL;
-if (!databaseUrl) throw new Error("DATABASE_URL is not set");
+const databaseUrl = process.env.DATABASE_URL
+if (!databaseUrl) throw new Error("DATABASE_URL is not set")
 
-const sql = neon(databaseUrl);
-const db = drizzle(sql, { schema });
+const sql = neon(databaseUrl)
+const db = drizzle(sql, { schema })
 
 // ─── Conveyancing Workflow Data ───────────────────────────────────────────────
 
 type ConveyancingStage =
-  (typeof schema.conveyancingStageEnum.enumValues)[number];
+  (typeof schema.conveyancingStageEnum.enumValues)[number]
 
 const stageActions: Record<ConveyancingStage, string[]> = {
   engagement_and_onboarding: [
@@ -93,18 +93,18 @@ const stageActions: Record<ConveyancingStage, string[]> = {
     "Send final report to lender",
     "Close matter file and archive",
   ],
-};
+}
 
 // ─── Main seed function ───────────────────────────────────────────────────────
 
 async function main() {
-  console.log("Seeding database...");
+  console.log("Seeding database...")
 
   // Clear existing data (idempotent re-runs)
-  console.log("Clearing existing data...");
+  console.log("Clearing existing data...")
   await db.execute(
     rawSql`TRUNCATE TABLE ai_chat_messages, ai_chats, matter_actions, matter_stages, matters, properties CASCADE`,
-  );
+  )
 
   // Insert sample property
   const [property] = await db
@@ -116,9 +116,9 @@ async function main() {
       postcode: "2000",
       titleReference: "1/SP12345",
     })
-    .returning();
+    .returning()
 
-  console.log(`Inserted property: ${property.id} -- ${property.streetAddress}`);
+  console.log(`Inserted property: ${property.id} -- ${property.streetAddress}`)
 
   // Insert sample matter
   const [matter] = await db
@@ -132,16 +132,16 @@ async function main() {
         "Residential conveyancing matter for the purchase of 42 Harbour St, Sydney on behalf of the Smith family.",
       currentStage: schema.conveyancingStageEnum.enumValues[0], // engagement_and_onboarding
     })
-    .returning();
+    .returning()
 
-  console.log(`Inserted matter: ${matter.referenceNumber} -- ${matter.title}`);
+  console.log(`Inserted matter: ${matter.referenceNumber} -- ${matter.title}`)
 
   // Insert all stages
   for (const [
     index,
     stageName,
   ] of schema.conveyancingStageEnum.enumValues.entries()) {
-    const isFirstStage = index === 0;
+    const isFirstStage = index === 0
 
     const [stage] = await db
       .insert(schema.matterStages)
@@ -151,29 +151,29 @@ async function main() {
         status: isFirstStage ? "in_progress" : "not_started",
         startedAt: isFirstStage ? new Date() : null,
       })
-      .returning();
+      .returning()
 
-    console.log(`  Inserted stage: ${stage.stage}`);
+    console.log(`  Inserted stage: ${stage.stage}`)
 
     // Insert all actions for this stage in a single batch
-    const actions = stageActions[stageName];
+    const actions = stageActions[stageName]
     const actionValues = actions.map((description: string) => ({
       matterStageId: stage.id,
       description,
 
       status: "not_started" as const,
       aiSuggested: false,
-    }));
+    }))
 
-    await db.insert(schema.matterActions).values(actionValues);
+    await db.insert(schema.matterActions).values(actionValues)
 
-    console.log(`    Inserted ${actionValues.length} actions for ${stageName}`);
+    console.log(`    Inserted ${actionValues.length} actions for ${stageName}`)
   }
 
-  console.log("Seeding complete.");
+  console.log("Seeding complete.")
 }
 
 main().catch((err) => {
-  console.error("Seed script failed:", err);
-  process.exit(1);
-});
+  console.error("Seed script failed:", err)
+  process.exit(1)
+})

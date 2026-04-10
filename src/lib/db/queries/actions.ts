@@ -1,6 +1,6 @@
-import { and, eq, ne } from "drizzle-orm";
-import type { db as DbInstance } from "@/db";
-import { matterActions, matterStages, matters } from "@/db/schema";
+import { and, eq, ne } from "drizzle-orm"
+import type { db as DbInstance } from "@/db"
+import { matterActions, matterStages, matters } from "@/db/schema"
 
 /**
  * Returns all pending (not completed or skipped) actions for the
@@ -14,9 +14,9 @@ export async function getPendingActionsForCurrentStage(
   const matterRow = await db.query.matters.findFirst({
     where: eq(matters.id, matterId),
     columns: { currentStage: true },
-  });
+  })
 
-  if (!matterRow) return [];
+  if (!matterRow) return []
 
   const rows = await db
     .select({
@@ -34,9 +34,9 @@ export async function getPendingActionsForCurrentStage(
         ne(matterActions.status, "completed"),
         ne(matterActions.status, "skipped"),
       ),
-    );
+    )
 
-  return rows;
+  return rows
 }
 
 /**
@@ -62,12 +62,12 @@ export async function markActionComplete(
     .where(
       and(eq(matterActions.id, actionId), eq(matterStages.matterId, matterId)),
     )
-    .limit(1);
+    .limit(1)
 
   if (existing.length === 0) {
     throw new Error(
       `Action ${actionId} not found or does not belong to matter ${matterId}`,
-    );
+    )
   }
 
   const [updated] = await db
@@ -79,7 +79,7 @@ export async function markActionComplete(
       description: matterActions.description,
       status: matterActions.status,
       completedAt: matterActions.completedAt,
-    });
+    })
 
-  return updated;
+  return updated
 }

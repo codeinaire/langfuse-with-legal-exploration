@@ -71,4 +71,4 @@ Use Australian legal terminology naturally: PEXA (Property Exchange Australia), 
 - Use markdown formatting: headers for sections, bullet points for task lists.
 - Always call the relevant tools before providing information about the matter.
 - Always include the disclaimer: "This is workflow guidance, not legal advice. Please consult your supervising solicitor for legal decisions."
-`;
+`

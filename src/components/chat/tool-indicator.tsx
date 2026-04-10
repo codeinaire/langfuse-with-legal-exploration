@@ -1,10 +1,10 @@
-"use client";
+"use client"
 
-import type { UIDataTypes, UIMessagePart, UITools } from "ai";
-import { getToolName, isToolUIPart } from "ai";
+import type { UIDataTypes, UIMessagePart, UITools } from "ai"
+import { getToolName, isToolUIPart } from "ai"
 
 interface ToolIndicatorProps {
-  part: UIMessagePart<UIDataTypes, UITools>;
+  part: UIMessagePart<UIDataTypes, UITools>
 }
 
 /**
@@ -15,7 +15,7 @@ function toTitleCase(camelCase: string): string {
   return camelCase
     .replace(/([A-Z])/g, " $1")
     .replace(/^./, (s) => s.toUpperCase())
-    .trim();
+    .trim()
 }
 
 /**
@@ -30,17 +30,17 @@ function getPartState(
     "state" in part &&
     typeof (part as { state?: unknown }).state === "string"
   ) {
-    return (part as { state: string }).state;
+    return (part as { state: string }).state
   }
-  return undefined;
+  return undefined
 }
 
 export function ToolIndicator({ part }: ToolIndicatorProps) {
-  if (!isToolUIPart(part)) return null;
+  if (!isToolUIPart(part)) return null
 
-  const rawName = getToolName(part);
-  const displayName = toTitleCase(rawName);
-  const state = getPartState(part);
+  const rawName = getToolName(part)
+  const displayName = toTitleCase(rawName)
+  const state = getPartState(part)
 
   if (state === "input-streaming" || state === "input-available") {
     return (
@@ -48,7 +48,7 @@ export function ToolIndicator({ part }: ToolIndicatorProps) {
         <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-blue-400" />
         <span>Calling {displayName}...</span>
       </div>
-    );
+    )
   }
 
   if (state === "output-available") {
@@ -57,7 +57,7 @@ export function ToolIndicator({ part }: ToolIndicatorProps) {
         <span className="inline-block h-2 w-2 rounded-full bg-green-400" />
         <span>Called {displayName}</span>
       </div>
-    );
+    )
   }
 
   if (state === "output-error") {
@@ -66,7 +66,7 @@ export function ToolIndicator({ part }: ToolIndicatorProps) {
         <span className="inline-block h-2 w-2 rounded-full bg-red-400" />
         <span>Error in {displayName}</span>
       </div>
-    );
+    )
   }
 
   // Fallback for other states
@@ -75,5 +75,5 @@ export function ToolIndicator({ part }: ToolIndicatorProps) {
       <span className="inline-block h-2 w-2 rounded-full bg-gray-300" />
       <span>{displayName}</span>
     </div>
-  );
+  )
 }

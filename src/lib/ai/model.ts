@@ -1,17 +1,17 @@
-import { cerebras } from "@ai-sdk/cerebras";
-import { google } from "@ai-sdk/google";
-import { groq } from "@ai-sdk/groq";
-import { mistral } from "@ai-sdk/mistral";
-import type { LanguageModelV3 } from "@ai-sdk/provider";
-import { createOpenRouter } from "@openrouter/ai-sdk-provider";
+import { cerebras } from "@ai-sdk/cerebras"
+import { google } from "@ai-sdk/google"
+import { groq } from "@ai-sdk/groq"
+import { mistral } from "@ai-sdk/mistral"
+import type { LanguageModelV3 } from "@ai-sdk/provider"
+import { createOpenRouter } from "@openrouter/ai-sdk-provider"
 
 const openrouter = createOpenRouter({
   apiKey: process.env.OPENROUTER_API_KEY,
-});
+})
 
-type AIProvider = "gemini" | "groq" | "mistral" | "cerebras" | "openrouter";
+type AIProvider = "gemini" | "groq" | "mistral" | "cerebras" | "openrouter"
 
-const DEFAULT_PROVIDER: AIProvider = "gemini";
+const DEFAULT_PROVIDER: AIProvider = "gemini"
 
 const FALLBACK_ORDER: Record<AIProvider, AIProvider[]> = {
   gemini: ["groq", "mistral", "cerebras", "openrouter"],
@@ -19,7 +19,7 @@ const FALLBACK_ORDER: Record<AIProvider, AIProvider[]> = {
   mistral: ["gemini", "groq", "cerebras", "openrouter"],
   cerebras: ["gemini", "groq", "mistral", "openrouter"],
   openrouter: ["gemini", "groq", "mistral", "cerebras"],
-};
+}
 
 const MODEL_MAP: Record<AIProvider, () => LanguageModelV3> = {
   gemini: () => google("gemini-2.5-flash"),
@@ -27,7 +27,7 @@ const MODEL_MAP: Record<AIProvider, () => LanguageModelV3> = {
   mistral: () => mistral("mistral-small-2503"),
   cerebras: () => cerebras("llama3.1-8b"),
   openrouter: () => openrouter.chat("meta-llama/llama-3.3-70b-instruct:free"),
-};
+}
 
 /**
  * A type guard function that checks whether the ai exists in the model map
@@ -36,11 +36,11 @@ const MODEL_MAP: Record<AIProvider, () => LanguageModelV3> = {
  * @returns boolean
  */
 function doesAiProviderExist(aiProvider: string): aiProvider is AIProvider {
-  return aiProvider in MODEL_MAP;
+  return aiProvider in MODEL_MAP
 }
 
-let resolvedProvider: AIProvider = DEFAULT_PROVIDER;
-let validated = false;
+let resolvedProvider: AIProvider = DEFAULT_PROVIDER
+let validated = false
 
 /**
  * Validates the provided given by the env var is valid, if not it fails gracefully by
@@ -49,17 +49,17 @@ let validated = false;
  * @returns void
  */
 export function validateModelProvider(): void {
-  if (validated) return;
-  validated = true;
-  const aiProvider = process.env.AI_PROVIDER ?? DEFAULT_PROVIDER;
+  if (validated) return
+  validated = true
+  const aiProvider = process.env.AI_PROVIDER ?? DEFAULT_PROVIDER
   if (!doesAiProviderExist(aiProvider)) {
     console.warn(
       `Unknown AI_PROVIDER: "${aiProvider}". Valid options are: ${Object.keys(MODEL_MAP).join(", ")}. Falling back to "${DEFAULT_PROVIDER}".`,
-    );
-    resolvedProvider = DEFAULT_PROVIDER;
-    return;
+    )
+    resolvedProvider = DEFAULT_PROVIDER
+    return
   }
-  resolvedProvider = aiProvider;
+  resolvedProvider = aiProvider
 }
 
 /**
@@ -70,8 +70,8 @@ export function validateModelProvider(): void {
  * @returns LanguageModelV3
  */
 export function getModelWithFallbacks(): LanguageModelV3[] {
-  validateModelProvider();
-  const primary = resolvedProvider;
-  const fallbacks = FALLBACK_ORDER[primary];
-  return [MODEL_MAP[primary](), ...fallbacks.map((p) => MODEL_MAP[p]())];
+  validateModelProvider()
+  const primary = resolvedProvider
+  const fallbacks = FALLBACK_ORDER[primary]
+  return [MODEL_MAP[primary](), ...fallbacks.map((p) => MODEL_MAP[p]())]
 }

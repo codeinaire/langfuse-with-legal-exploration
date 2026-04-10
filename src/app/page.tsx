@@ -1,6 +1,6 @@
-import { eq } from "drizzle-orm";
-import { db } from "@/db";
-import { matters } from "@/db/schema";
+import { eq } from "drizzle-orm"
+import { db } from "@/db"
+import { matters } from "@/db/schema"
 
 export default async function Home() {
   // Fetch the first (demo) matter to build the link
@@ -12,7 +12,7 @@ export default async function Home() {
       title: true,
       currentStage: true,
     },
-  });
+  })
 
   return (
     <main className="min-h-screen p-8">
@@ -63,5 +63,5 @@ export default async function Home() {
         </div>
       </div>
     </main>
-  );
+  )
 }
