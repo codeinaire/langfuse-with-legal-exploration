@@ -1,4 +1,4 @@
-import { relations } from "drizzle-orm";
+import { relations } from "drizzle-orm"
 import {
   boolean,
   pgEnum,
@@ -8,7 +8,7 @@ import {
   unique,
   uuid,
   varchar,
-} from "drizzle-orm/pg-core";
+} from "drizzle-orm/pg-core"
 
 // ─── Common Columns ──────────────────────────────────────────────────────────
 
@@ -20,13 +20,13 @@ const baseColumns = {
   updatedAt: timestamp("updated_at", { withTimezone: true })
     .defaultNow()
     .notNull(),
-};
+}
 
 // ─── Enums ────────────────────────────────────────────────────────────────────
 
 export const matterTypeEnum = pgEnum("matter_type", [
   "residential_conveyancing",
-]);
+])
 
 export const progressStatusEnum = pgEnum("progress_status", [
   "not_started",
@@ -34,7 +34,7 @@ export const progressStatusEnum = pgEnum("progress_status", [
   "blocked",
   "completed",
   "skipped",
-]);
+])
 
 export const conveyancingStageEnum = pgEnum("conveyancing_stage", [
   "engagement_and_onboarding",
@@ -47,14 +47,14 @@ export const conveyancingStageEnum = pgEnum("conveyancing_stage", [
   "pre_settlement",
   "settlement",
   "post_settlement",
-]);
+])
 
 export const matterStatusEnum = pgEnum("matter_status", [
   "open",
   "on_hold",
   "completed",
   "archived",
-]);
+])
 
 export const stateEnum = pgEnum("australian_state", [
   "nsw",
@@ -65,13 +65,13 @@ export const stateEnum = pgEnum("australian_state", [
   "tas",
   "act",
   "nt",
-]);
+])
 
 export const messageRoleEnum = pgEnum("message_role", [
   "user",
   "assistant",
   "system",
-]);
+])
 
 // ─── Tables ───────────────────────────────────────────────────────────────────
 
@@ -84,7 +84,7 @@ export const properties = pgTable("properties", {
   lotNumber: varchar("lot_number", { length: 50 }),
   planNumber: varchar("plan_number", { length: 50 }),
   titleReference: varchar("title_reference", { length: 100 }),
-});
+})
 
 export const matters = pgTable("matters", {
   ...baseColumns,
@@ -101,7 +101,7 @@ export const matters = pgTable("matters", {
   currentStage: conveyancingStageEnum("current_stage")
     .default("engagement_and_onboarding")
     .notNull(),
-});
+})
 
 export const matterStages = pgTable(
   "matter_stages",
@@ -117,7 +117,7 @@ export const matterStages = pgTable(
     notes: text("notes"),
   },
   (table) => [unique().on(table.matterId, table.stage)],
-);
+)
 
 export const matterActions = pgTable("matter_actions", {
   ...baseColumns,
@@ -130,7 +130,7 @@ export const matterActions = pgTable("matter_actions", {
   dueDate: timestamp("due_date", { withTimezone: true }),
   completedAt: timestamp("completed_at", { withTimezone: true }),
   notes: text("notes"),
-});
+})
 
 export const aiChats = pgTable("ai_chats", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -143,7 +143,7 @@ export const aiChats = pgTable("ai_chats", {
   createdAt: timestamp("created_at", { withTimezone: true })
     .defaultNow()
     .notNull(),
-});
+})
 
 export const aiChatMessages = pgTable("ai_chat_messages", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -155,13 +155,13 @@ export const aiChatMessages = pgTable("ai_chat_messages", {
   createdAt: timestamp("created_at", { withTimezone: true })
     .defaultNow()
     .notNull(),
-});
+})
 
 // ─── Relations ────────────────────────────────────────────────────────────────
 
 export const propertiesRelations = relations(properties, ({ many }) => ({
   matters: many(matters),
-}));
+}))
 
 export const mattersRelations = relations(matters, ({ one, many }) => ({
   property: one(properties, {
@@ -169,7 +169,7 @@ export const mattersRelations = relations(matters, ({ one, many }) => ({
     references: [properties.id],
   }),
   matterStages: many(matterStages),
-}));
+}))
 
 export const matterStagesRelations = relations(
   matterStages,
@@ -181,14 +181,14 @@ export const matterStagesRelations = relations(
     matterActions: many(matterActions),
     aiChats: many(aiChats),
   }),
-);
+)
 
 export const matterActionsRelations = relations(matterActions, ({ one }) => ({
   matterStage: one(matterStages, {
     fields: [matterActions.matterStageId],
     references: [matterStages.id],
   }),
-}));
+}))
 
 export const aiChatsRelations = relations(aiChats, ({ one, many }) => ({
   matterStage: one(matterStages, {
@@ -196,11 +196,11 @@ export const aiChatsRelations = relations(aiChats, ({ one, many }) => ({
     references: [matterStages.id],
   }),
   aiChatMessages: many(aiChatMessages),
-}));
+}))
 
 export const aiChatMessagesRelations = relations(aiChatMessages, ({ one }) => ({
   aiChat: one(aiChats, {
     fields: [aiChatMessages.aiChatId],
     references: [aiChats.id],
   }),
-}));
+}))

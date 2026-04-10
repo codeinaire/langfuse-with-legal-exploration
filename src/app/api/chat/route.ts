@@ -1,57 +1,71 @@
-import type { LanguageModelV3 } from '@ai-sdk/provider'
+import type { LanguageModelV3 } from "@ai-sdk/provider"
 import {
   observe,
   propagateAttributes,
   setActiveTraceIO,
   updateActiveObservation,
-} from '@langfuse/tracing'
-import { trace } from '@opentelemetry/api'
-import { streamText } from 'ai'
-import { after } from 'next/server'
-import { z } from 'zod'
-import { langfuseSpanProcessor } from '@/instrumentation'
-import { getModelWithFallbacks } from '@/lib/ai/model'
+} from "@langfuse/tracing"
+import { trace } from "@opentelemetry/api"
+import type { UIMessage } from "ai"
+import { convertToModelMessages, stepCountIs, streamText } from "ai"
+import { after } from "next/server"
+import { z } from "zod"
+import { db } from "@/db"
+import { langfuseSpanProcessor } from "@/instrumentation"
+import { getModelWithFallbacks } from "@/lib/ai/model"
+import { CONVEYANCING_SYSTEM_PROMPT } from "@/lib/ai/prompts"
+import { conveyancingTools } from "@/lib/ai/tools"
 
-type MessageRole = 'user' | 'assistant' | 'system'
+// Next.js route segment config -- multi-step agent can take >15 seconds
+export const maxDuration = 60
 
-interface Message {
-  role: MessageRole
-  content: string
-}
+const uiMessagePartSchema = z.looseObject({ type: z.string() })
 
 const chatRequestSchema = z.object({
   messages: z
     .array(
-      z.object({
-        role: z.enum(['user', 'assistant', 'system']),
-        content: z.string(),
-      }),
+      z
+        .object({
+          id: z.string(),
+          role: z.enum(["user", "assistant", "system"]),
+          parts: z.array(uiMessagePartSchema),
+        })
+        .passthrough(),
     )
-    .min(1, 'messages must be a non-empty array'),
-  matterId: z.string().optional(),
+    .min(1, "messages must be a non-empty array"),
+  matterId: z.uuid("matterId must be a valid UUID"),
 })
 
 /**
- * Does a streamText call to the selected model provider but if that fails a fallback
- * model provider is utilised and the text response is streamed back
+ * Streams a UIMessage response using the given model providers in order.
+ * If a provider throws synchronously at call time (e.g. bad auth, rate-limit
+ * before streaming starts), falls back to the next provider.
+ * Streaming errors after the first chunk are surfaced to the client via
+ * the UIMessage stream error protocol.
  */
 async function tryStreamText(
   modelProviders: LanguageModelV3[],
   system: string,
-  messages: Message[],
+  uiMessages: UIMessage[],
+  agentContext: { matterId: string; db: typeof db },
 ) {
   let lastError: unknown
 
+  const modelMessages = await convertToModelMessages(uiMessages)
   const numberOfProviders = modelProviders.length
+
   for (let index = 0; index < numberOfProviders; index++) {
     const model = modelProviders[index]
-    const modelId = 'modelId' in model ? model.modelId : 'unknown'
+    const modelId = "modelId" in model ? model.modelId : "unknown"
     console.info(`Using model: ${modelId}`)
     try {
       const result = streamText({
         model,
         system,
-        messages,
+        messages: modelMessages,
+        tools: conveyancingTools,
+        stopWhen: stepCountIs(5),
+        experimental_context: agentContext,
         experimental_telemetry: { isEnabled: true },
         onFinish: ({ text }) => {
           updateActiveObservation({ output: text })
@@ -60,52 +74,25 @@ async function tryStreamText(
         },
       })
 
-      // Force the provider connection by reading the first chunk.
-      // If the provider is down, rate-limited, or has bad auth,
-      // this is where it fails — allowing the for loop to catch it
-      // and try the next provider.
-      const reader = result.textStream[Symbol.asyncIterator]()
-      const firstChunk = await reader.next()
-
-      if (firstChunk.done) {
-        throw new Error(`${modelId} returned an empty stream`)
-      }
-
-      // Provider works — build a response from the verified first chunk
-      // plus the remaining stream
-      const stream = new ReadableStream({
-        async start(controller) {
-          const encoder = new TextEncoder()
-          controller.enqueue(encoder.encode(firstChunk.value))
-          try {
-            let next = await reader.next()
-            while (!next.done) {
-              controller.enqueue(encoder.encode(next.value))
-              next = await reader.next()
-            }
-          } catch (err) {
-            console.error(`Stream error mid-response from ${modelId}:`, err)
-          } finally {
-            controller.close()
-          }
-        },
-      })
-
       after(async () => await langfuseSpanProcessor.forceFlush())
 
-      return new Response(stream, {
-        headers: { 'Content-Type': 'text/plain; charset=utf-8' },
-      })
+      return result.toUIMessageStreamResponse()
     } catch (err) {
       lastError = err
       const errorMessage = err instanceof Error ? err.message : String(err)
-      const nextModel = index + 1 < numberOfProviders ? modelProviders[index + 1] : null
-      const nextModelId = nextModel && 'modelId' in nextModel ? nextModel.modelId : null
+      const nextModel =
+        index + 1 < numberOfProviders ? modelProviders[index + 1] : null
+      const nextModelId =
+        nextModel && "modelId" in nextModel ? nextModel.modelId : null
 
       if (nextModelId) {
-        console.warn(`Provider failed, trying ${nextModelId} as fallback: ${errorMessage}`)
+        console.warn(
+          `Provider failed, trying ${nextModelId} as fallback: ${errorMessage}`,
+        )
       } else {
-        console.warn(`Provider failed, no more fallbacks available: ${errorMessage}`)
+        console.warn(
+          `Provider failed, no more fallbacks available: ${errorMessage}`,
+        )
       }
     }
   }
@@ -118,7 +105,7 @@ const handler = async (req: Request) => {
   try {
     body = await req.json()
   } catch {
-    return new Response('Invalid JSON', { status: 400 })
+    return new Response("Invalid JSON", { status: 400 })
   }
 
   const parsed = chatRequestSchema.safeParse(body)
@@ -127,37 +114,47 @@ const handler = async (req: Request) => {
   }
 
   const { messages, matterId } = parsed.data
-  const resolvedMatterId = matterId ?? `matter-${Date.now()}`
+  const uiMessages = messages as UIMessage[]
 
-  const system =
-    'You are a legal workflow assistant helping with conveyancing matters in Australia.'
+  const agentContext = { matterId, db }
 
-  updateActiveObservation({ input: { system, messages } })
-  setActiveTraceIO({ input: { system, messages } })
+  updateActiveObservation({
+    input: { system: CONVEYANCING_SYSTEM_PROMPT, messages },
+  })
+  setActiveTraceIO({ input: { system: CONVEYANCING_SYSTEM_PROMPT, messages } })
 
   return propagateAttributes(
     {
-      traceName: 'conveyancing-legal-matter-chat',
-      sessionId: resolvedMatterId,
-      userId: 'no-user',
-      version: '1.0',
-      metadata: { env: 'demo' },
-      tags: ['conversational'],
+      traceName: "conveyancing-legal-matter-chat",
+      sessionId: matterId,
+      userId: "no-user",
+      version: "1.0",
+      metadata: { env: "demo" },
+      tags: ["conversational"],
     },
     async () => {
       try {
-        return await tryStreamText(getModelWithFallbacks(), system, messages)
+        return await tryStreamText(
+          getModelWithFallbacks(),
+          CONVEYANCING_SYSTEM_PROMPT,
+          uiMessages,
+          agentContext,
+        )
       } catch (err) {
-        console.error('All providers failed:', err instanceof Error ? err.message : String(err))
-        return new Response('All AI providers are currently unavailable. Please try again later.', {
-          status: 503,
-        })
+        console.error(
+          "All providers failed:",
+          err instanceof Error ? err.message : String(err),
+        )
+        return new Response(
+          "All AI providers are currently unavailable. Please try again later.",
+          { status: 503 },
+        )
       }
     },
   )
 }
 
 export const POST = observe(handler, {
-  name: 'chat-handler',
+  name: "chat-handler",
   endOnExit: false,
 })

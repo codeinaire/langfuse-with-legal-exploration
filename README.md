@@ -56,6 +56,83 @@ Six tables model the legal matter lifecycle:
 - **ai_chats** -- Chat sessions between the user and the AI agent
 - **ai_chat_messages** -- Individual messages within a chat session
 
+```mermaid
+erDiagram
+    properties {
+        uuid id PK
+        varchar street_address
+        varchar suburb
+        australian_state state
+        varchar postcode
+        varchar lot_number
+        varchar plan_number
+        varchar title_reference
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    matters {
+        uuid id PK
+        varchar reference_number UK
+        matter_type type
+        matter_status status
+        uuid property_id FK
+        varchar title
+        text description
+        conveyancing_stage current_stage
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    matter_stages {
+        uuid id PK
+        uuid matter_id FK
+        conveyancing_stage stage
+        progress_status status
+        timestamp started_at
+        timestamp completed_at
+        text notes
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    matter_actions {
+        uuid id PK
+        uuid matter_stage_id FK
+        text description
+        boolean ai_suggested
+        progress_status status
+        timestamp due_date
+        timestamp completed_at
+        text notes
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    ai_chats {
+        uuid id PK
+        uuid matter_stage_id FK
+        varchar title
+        varchar model
+        varchar session_id
+        timestamp created_at
+    }
+
+    ai_chat_messages {
+        uuid id PK
+        uuid ai_chat_id FK
+        message_role role
+        text content
+        timestamp created_at
+    }
+
+    properties ||--o{ matters : "has"
+    matters ||--o{ matter_stages : "has"
+    matter_stages ||--o{ matter_actions : "has"
+    matter_stages ||--o{ ai_chats : "has"
+    ai_chats ||--o{ ai_chat_messages : "has"
+```
+
 The seed script creates a sample residential conveyancing matter with all 10 stages and 50 actions based on the Australian buyer-side conveyancing workflow.
 
 ## Scripts
