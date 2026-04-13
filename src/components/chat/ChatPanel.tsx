@@ -20,18 +20,37 @@ export function ChatPanel({ matterId, pendingActionsCount }: ChatPanelProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const router = useRouter()
 
+  const MAX_CLIENT_RETRIES = 2
+  const retryCountRef = useRef(0)
+  const modelIndexRef = useRef(0)
+  const [retriesExhausted, setRetriesExhausted] = useState(false)
+
   const transport = useMemo(
     () =>
       new DefaultChatTransport({
         api: "/api/chat",
-        body: { matterId },
+        body: () => ({ matterId, modelIndex: modelIndexRef.current }),
       }),
     [matterId],
   )
 
-  const { messages, sendMessage, status, error } = useChat<ChatMessage>({
-    transport,
-  })
+  const { messages, sendMessage, status, error, regenerate } =
+    useChat<ChatMessage>({
+      transport,
+    })
+
+  // Auto-retry on stream error with the next model
+  useEffect(() => {
+    if (status !== "error") return
+
+    if (retryCountRef.current < MAX_CLIENT_RETRIES) {
+      retryCountRef.current++
+      modelIndexRef.current++
+      regenerate()
+    } else {
+      setRetriesExhausted(true)
+    }
+  }, [status, regenerate])
 
   // Auto-scroll to bottom when new messages arrive
   const prevMessageCount = useRef(0)
@@ -46,6 +65,9 @@ export function ChatPanel({ matterId, pendingActionsCount }: ChatPanelProps) {
   // so StageProgress gets fresh data from the server.
   useEffect(() => {
     if (status === "ready" && messages.length > 0) {
+      retryCountRef.current = 0
+      modelIndexRef.current = 0
+      setRetriesExhausted(false)
       router.refresh()
     }
   }, [status, messages.length, router])
@@ -181,8 +203,8 @@ export function ChatPanel({ matterId, pendingActionsCount }: ChatPanelProps) {
         </div>
       )}
 
-      {/* Error display */}
-      {error && (
+      {/* Error display — only after retries exhausted */}
+      {error && retriesExhausted && (
         <div className="mx-4 mb-2 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
           Error: {error.message}
         </div>

@@ -54,27 +54,30 @@ export function Message({
         ) : (
           // Assistant messages: render each part
           <div className="space-y-2">
-            {message.parts.map((part, partIndex) => {
-              const key = `text-${part.type}-${partIndex}`
-              if (isTextUIPart(part)) {
-                return (
-                  <div
-                    key={key}
-                    className="markdown-body text-sm text-gray-800"
-                  >
-                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                      {part.text}
-                    </ReactMarkdown>
-                  </div>
-                )
-              }
-
-              if (isToolUIPart(part)) {
-                return <ToolIndicator key={key} part={part} />
-              }
-
-              return null
-            })}
+            {message.parts.filter(isToolUIPart).map((part) => (
+              <ToolIndicator key={part.toolCallId} part={part} />
+            ))}
+            {message.parts
+              .map((part, originalIndex) => ({ part, originalIndex }))
+              .filter(
+                (
+                  item,
+                ): item is {
+                  part: Extract<typeof item.part, { type: "text" }>
+                  originalIndex: number
+                } =>
+                  isTextUIPart(item.part) && item.part.text.trim().length > 0,
+              )
+              .map(({ part, originalIndex }) => (
+                <div
+                  key={`text-${message.id}-${originalIndex}`}
+                  className="markdown-body text-sm text-gray-800"
+                >
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                    {part.text}
+                  </ReactMarkdown>
+                </div>
+              ))}
             {showFeedback && onFeedback && (
               <FeedbackButtons
                 traceId={message.metadata?.langfuseTraceId ?? ""}
