@@ -140,10 +140,6 @@ const handler = async (req: Request) => {
     isFallback,
   } = await getSystemPrompt()
 
-  if (isFallback) {
-    console.info("Using fallback system prompt (Langfuse prompt not available)")
-  }
-
   updateActiveObservation({
     input: { system: systemPrompt, messages },
   })
