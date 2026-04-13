@@ -21,8 +21,10 @@ interface FailTransition {
  * Attempts to advance a matter to the next conveyancing stage.
  *
  * Rules enforced:
- * 1. All actions in the current stage must be completed or skipped.
- * 2. There must be a next stage (not already at post_settlement).
+ * 1. Matter must exist
+ * 2. Matter with current stage must be in MatterStage
+ * 2. All actions in the current stage must be completed or skipped.
+ * 3. There must be a next stage (not already at post_settlement).
  *
  * If all rules pass, updates:
  * - matters.currentStage
