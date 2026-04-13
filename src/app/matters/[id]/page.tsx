@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation"
-import { ChatPanel } from "@/components/chat/chat-panel"
-import { StageProgress } from "@/components/matter/stage-progress"
+import { ChatPanel } from "@/components/chat/ChatPanel"
+import { StageProgress } from "@/components/matter/StageProgress"
 import { db } from "@/db"
 import { getMatterWithCurrentStage } from "@/lib/db/queries/matters"
 import { getAllStages, getStageWithActions } from "@/lib/db/queries/stages"

@@ -29,7 +29,7 @@ export function FeedbackModal({
 
   if (!open) return null
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: React.SubmitEvent) => {
     e.preventDefault()
     const trimmed = comment.trim()
     if (!trimmed) return

@@ -4,8 +4,8 @@ import { useChat } from "@ai-sdk/react"
 import { DefaultChatTransport } from "ai"
 import { useRouter } from "next/navigation"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import type { ChatMessage, FeedbackScore } from "@/lib/ai/chat-types"
-import { type FeedbackStatus, Message } from "./message"
+import type { ChatMessage } from "@/lib/ai/chat-types"
+import { type FeedbackStatus, Message } from "./Message"
 
 interface ChatPanelProps {
   matterId: string
@@ -54,37 +54,25 @@ export function ChatPanel({ matterId, pendingActionsCount }: ChatPanelProps) {
     async (
       messageId: string,
       traceId: string,
-      score: FeedbackScore,
-      comment?: string,
-    ): Promise<boolean> => {
-      if (score !== "comment") {
-        setFeedbackState((prev) => new Map(prev).set(messageId, "submitting"))
-      }
+      score: "thumbs-up" | "thumbs-down",
+    ) => {
+      setFeedbackState((prev) => new Map(prev).set(messageId, "submitting"))
       try {
-        const numericScore =
-          score === "thumbs-up" ? 1 : score === "thumbs-down" ? 0 : undefined
+        const numericScore = score === "thumbs-up" ? 1 : 0
         const res = await fetch("/api/feedback", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            traceId,
-            ...(numericScore != null && { score: numericScore }),
-            ...(comment && { comment }),
-          }),
+          body: JSON.stringify({ traceId, score: numericScore }),
         })
         if (!res.ok) throw new Error("Request failed")
-        const statusMap: Record<FeedbackScore, FeedbackStatus> = {
-          "thumbs-up": "submitted-up",
-          "thumbs-down": "submitted-down",
-          comment: "submitted-comment",
-        }
         setFeedbackState((prev) =>
-          new Map(prev).set(messageId, statusMap[score]),
+          new Map(prev).set(
+            messageId,
+            score === "thumbs-up" ? "submitted-up" : "submitted-down",
+          ),
         )
-        return true
       } catch {
         setFeedbackState((prev) => new Map(prev).set(messageId, "error"))
-        return false
       }
     },
     [],
@@ -169,8 +157,15 @@ export function ChatPanel({ matterId, pendingActionsCount }: ChatPanelProps) {
                 feedbackStatus={feedbackState.get(message.id) ?? "idle"}
                 onFeedback={
                   canGiveFeedback
-                    ? (score, comment) =>
-                        handleFeedback(message.id, traceId, score, comment)
+                    ? (score) => handleFeedback(message.id, traceId, score)
+                    : undefined
+                }
+                onCommentSubmitted={
+                  canGiveFeedback
+                    ? () =>
+                        setFeedbackState((prev) =>
+                          new Map(prev).set(message.id, "submitted-comment"),
+                        )
                     : undefined
                 }
               />

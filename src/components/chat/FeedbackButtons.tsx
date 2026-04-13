@@ -1,40 +1,51 @@
 "use client"
 
 import { useState } from "react"
-import { ChatBubbleIcon } from "@/components/icons/chat-bubble"
-import { ThumbsDownIcon } from "@/components/icons/thumbs-down"
-import { ThumbsUpIcon } from "@/components/icons/thumbs-up"
+import { ChatBubbleIcon } from "@/components/icons/ChatBubble"
+import { ThumbsDownIcon } from "@/components/icons/ThumbsDown"
+import { ThumbsUpIcon } from "@/components/icons/ThumbsUp"
 import type { FeedbackScore } from "@/lib/ai/chat-types"
-import { FeedbackModal } from "./feedback-modal"
-import type { FeedbackStatus } from "./message"
+import { FeedbackModal } from "./FeedbackModal"
+import type { FeedbackStatus } from "./Message"
 
 interface FeedbackButtonsProps {
+  traceId: string
   status: FeedbackStatus
-  onSubmit: (score: FeedbackScore, comment?: string) => Promise<boolean>
+  onSubmit: (score: FeedbackScore) => void
+  onCommentSubmitted: () => void
 }
 
-export function FeedbackButtons({ status, onSubmit }: FeedbackButtonsProps) {
+async function submitComment(
+  traceId: string,
+  comment: string,
+): Promise<boolean> {
+  try {
+    const res = await fetch("/api/feedback", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ traceId, comment }),
+    })
+    return res.ok
+  } catch {
+    return false
+  }
+}
+
+export function FeedbackButtons({
+  traceId,
+  status,
+  onSubmit,
+  onCommentSubmitted,
+}: FeedbackButtonsProps) {
   const [modalOpen, setModalOpen] = useState(false)
   const [commentSubmitting, setCommentSubmitting] = useState(false)
   const [commentError, setCommentError] = useState(false)
+  const [commentSubmitted, setCommentSubmitted] = useState(false)
 
   const isDisabled =
     status === "submitting" ||
     status === "submitted-up" ||
-    status === "submitted-down" ||
-    status === "submitted-comment"
-
-  const handleCommentSubmit = async (comment: string) => {
-    setCommentSubmitting(true)
-    setCommentError(false)
-    const success = await onSubmit("comment", comment)
-    setCommentSubmitting(false)
-    if (success) {
-      setModalOpen(false)
-    } else {
-      setCommentError(true)
-    }
-  }
+    status === "submitted-down"
 
   return (
     <>
@@ -67,10 +78,10 @@ export function FeedbackButtons({ status, onSubmit }: FeedbackButtonsProps) {
         </button>
         <button
           type="button"
-          disabled={isDisabled}
+          disabled={commentSubmitted}
           onClick={() => setModalOpen(true)}
           className={`rounded p-1 transition disabled:opacity-50 ${
-            status === "submitted-comment"
+            commentSubmitted
               ? "text-blue-600"
               : "text-gray-400 hover:text-gray-700"
           }`}
@@ -88,7 +99,19 @@ export function FeedbackButtons({ status, onSubmit }: FeedbackButtonsProps) {
           setModalOpen(false)
           setCommentError(false)
         }}
-        onSubmit={handleCommentSubmit}
+        onSubmit={async (comment) => {
+          setCommentSubmitting(true)
+          setCommentError(false)
+          const success = await submitComment(traceId, comment)
+          setCommentSubmitting(false)
+          if (success) {
+            setCommentSubmitted(true)
+            setModalOpen(false)
+            onCommentSubmitted()
+          } else {
+            setCommentError(true)
+          }
+        }}
         submitting={commentSubmitting}
         error={commentError}
       />
