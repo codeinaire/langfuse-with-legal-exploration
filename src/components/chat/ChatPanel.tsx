@@ -4,8 +4,8 @@ import { useChat } from "@ai-sdk/react"
 import { DefaultChatTransport } from "ai"
 import { useRouter } from "next/navigation"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import type { ChatMessage } from "@/lib/ai/chat-types"
-import { type FeedbackStatus, Message } from "./Message"
+import type { ChatMessage, FeedbackStatus } from "@/lib/ai/chat-types"
+import { Message } from "./Message"
 
 interface ChatPanelProps {
   matterId: string

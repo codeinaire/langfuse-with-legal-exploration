@@ -4,9 +4,8 @@ import { useState } from "react"
 import { ChatBubbleIcon } from "@/components/icons/ChatBubble"
 import { ThumbsDownIcon } from "@/components/icons/ThumbsDown"
 import { ThumbsUpIcon } from "@/components/icons/ThumbsUp"
-import type { FeedbackScore } from "@/lib/ai/chat-types"
+import type { FeedbackScore, FeedbackStatus } from "@/lib/ai/chat-types"
 import { FeedbackModal } from "./FeedbackModal"
-import type { FeedbackStatus } from "./Message"
 
 interface FeedbackButtonsProps {
   traceId: string

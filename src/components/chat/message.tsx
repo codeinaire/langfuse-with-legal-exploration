@@ -3,17 +3,9 @@
 import { isTextUIPart, isToolUIPart } from "ai"
 import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
-import type { ChatMessage } from "@/lib/ai/chat-types"
+import type { ChatMessage, FeedbackStatus } from "@/lib/ai/chat-types"
 import { FeedbackButtons } from "./FeedbackButtons"
 import { ToolIndicator } from "./ToolIndicator"
-
-export type FeedbackStatus =
-  | "idle"
-  | "submitting"
-  | "submitted-up"
-  | "submitted-down"
-  | "submitted-comment"
-  | "error"
 
 interface MessageProps {
   message: ChatMessage
