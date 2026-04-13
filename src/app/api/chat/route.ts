@@ -1,17 +1,18 @@
 import type { LanguageModelV3 } from "@ai-sdk/provider"
 import {
+  getActiveTraceId,
   observe,
   propagateAttributes,
   setActiveTraceIO,
   updateActiveObservation,
 } from "@langfuse/tracing"
 import { trace } from "@opentelemetry/api"
-import type { UIMessage } from "ai"
 import { convertToModelMessages, stepCountIs, streamText } from "ai"
 import { after } from "next/server"
 import { z } from "zod"
 import { db } from "@/db"
 import { langfuseSpanProcessor } from "@/instrumentation"
+import type { ChatMessage } from "@/lib/ai/chat-types"
 import { getModelWithFallbacks } from "@/lib/ai/model"
 import { CONVEYANCING_SYSTEM_PROMPT } from "@/lib/ai/prompts"
 import { conveyancingTools } from "@/lib/ai/tools"
@@ -46,10 +47,17 @@ const chatRequestSchema = z.object({
 async function tryStreamText(
   modelProviders: LanguageModelV3[],
   system: string,
-  uiMessages: UIMessage[],
+  uiMessages: ChatMessage[],
   agentContext: { matterId: string; db: typeof db },
 ) {
   let lastError: unknown
+
+  const traceId = getActiveTraceId()
+  if (!traceId) {
+    console.warn(
+      "No active Langfuse trace ID at stream start -- user feedback will be unavailable for this message",
+    )
+  }
 
   const modelMessages = await convertToModelMessages(uiMessages)
   const numberOfProviders = modelProviders.length
@@ -76,7 +84,14 @@ async function tryStreamText(
 
       after(async () => await langfuseSpanProcessor.forceFlush())
 
-      return result.toUIMessageStreamResponse()
+      return result.toUIMessageStreamResponse<ChatMessage>({
+        messageMetadata: ({ part }) => {
+          if (part.type === "start" && traceId) {
+            return { langfuseTraceId: traceId }
+          }
+          return undefined
+        },
+      })
     } catch (err) {
       lastError = err
       const errorMessage = err instanceof Error ? err.message : String(err)
@@ -114,7 +129,7 @@ const handler = async (req: Request) => {
   }
 
   const { messages, matterId } = parsed.data
-  const uiMessages = messages as UIMessage[]
+  const uiMessages = messages as ChatMessage[]
 
   const agentContext = { matterId, db }
 

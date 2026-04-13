@@ -1,17 +1,38 @@
 "use client"
 
-import type { UIMessage } from "ai"
 import { isTextUIPart, isToolUIPart } from "ai"
 import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
-import { ToolIndicator } from "./tool-indicator"
+import type { ChatMessage, FeedbackStatus } from "@/lib/ai/chat-types"
+import { FeedbackButtons } from "./FeedbackButtons"
+import { ToolIndicator } from "./ToolIndicator"
 
 interface MessageProps {
-  message: UIMessage
+  message: ChatMessage
+  feedbackStatus?: FeedbackStatus
+  onFeedback?: (score: "thumbs-up" | "thumbs-down") => void
+  onCommentSubmitted?: () => void
 }
 
-export function Message({ message }: MessageProps) {
+function hasSubstantiveText(message: ChatMessage): boolean {
+  return message.parts
+    .filter(isTextUIPart)
+    .some((p) => p.text.trim().length > 0)
+}
+
+export function Message({
+  message,
+  feedbackStatus,
+  onFeedback,
+  onCommentSubmitted,
+}: MessageProps) {
   const isUser = message.role === "user"
+
+  const showFeedback =
+    !isUser &&
+    hasSubstantiveText(message) &&
+    message.metadata?.langfuseTraceId != null &&
+    onFeedback != null
 
   return (
     <div className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
@@ -54,6 +75,14 @@ export function Message({ message }: MessageProps) {
 
               return null
             })}
+            {showFeedback && onFeedback && (
+              <FeedbackButtons
+                traceId={message.metadata?.langfuseTraceId ?? ""}
+                status={feedbackStatus ?? "idle"}
+                onSubmit={onFeedback}
+                onCommentSubmitted={onCommentSubmitted ?? (() => {})}
+              />
+            )}
           </div>
         )}
       </div>

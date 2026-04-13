@@ -3,8 +3,9 @@
 import { useChat } from "@ai-sdk/react"
 import { DefaultChatTransport } from "ai"
 import { useRouter } from "next/navigation"
-import { useEffect, useMemo, useRef, useState } from "react"
-import { Message } from "./message"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import type { ChatMessage, FeedbackStatus } from "@/lib/ai/chat-types"
+import { Message } from "./Message"
 
 interface ChatPanelProps {
   matterId: string
@@ -13,6 +14,9 @@ interface ChatPanelProps {
 
 export function ChatPanel({ matterId, pendingActionsCount }: ChatPanelProps) {
   const [inputValue, setInputValue] = useState("")
+  const [feedbackState, setFeedbackState] = useState<
+    Map<string, FeedbackStatus>
+  >(() => new Map())
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const router = useRouter()
 
@@ -25,7 +29,7 @@ export function ChatPanel({ matterId, pendingActionsCount }: ChatPanelProps) {
     [matterId],
   )
 
-  const { messages, sendMessage, status, error } = useChat({
+  const { messages, sendMessage, status, error } = useChat<ChatMessage>({
     transport,
   })
 
@@ -45,6 +49,34 @@ export function ChatPanel({ matterId, pendingActionsCount }: ChatPanelProps) {
       router.refresh()
     }
   }, [status, messages.length, router])
+
+  const handleFeedback = useCallback(
+    async (
+      messageId: string,
+      traceId: string,
+      score: "thumbs-up" | "thumbs-down",
+    ) => {
+      setFeedbackState((prev) => new Map(prev).set(messageId, "submitting"))
+      try {
+        const numericScore = score === "thumbs-up" ? 1 : 0
+        const res = await fetch("/api/feedback", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ traceId, score: numericScore }),
+        })
+        if (!res.ok) throw new Error("Request failed")
+        setFeedbackState((prev) =>
+          new Map(prev).set(
+            messageId,
+            score === "thumbs-up" ? "submitted-up" : "submitted-down",
+          ),
+        )
+      } catch {
+        setFeedbackState((prev) => new Map(prev).set(messageId, "error"))
+      }
+    },
+    [],
+  )
 
   const handleSubmit = (e: React.SubmitEvent) => {
     e.preventDefault()
@@ -115,9 +147,30 @@ export function ChatPanel({ matterId, pendingActionsCount }: ChatPanelProps) {
       {/* Message list */}
       {messages.length > 0 && (
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
-          {messages.map((message) => (
-            <Message key={message.id} message={message} />
-          ))}
+          {messages.map((message) => {
+            const traceId = message.metadata?.langfuseTraceId
+            const canGiveFeedback = status === "ready" && traceId != null
+            return (
+              <Message
+                key={message.id}
+                message={message}
+                feedbackStatus={feedbackState.get(message.id) ?? "idle"}
+                onFeedback={
+                  canGiveFeedback
+                    ? (score) => handleFeedback(message.id, traceId, score)
+                    : undefined
+                }
+                onCommentSubmitted={
+                  canGiveFeedback
+                    ? () =>
+                        setFeedbackState((prev) =>
+                          new Map(prev).set(message.id, "submitted-comment"),
+                        )
+                    : undefined
+                }
+              />
+            )
+          })}
           {isStreaming && (
             <div className="flex items-center gap-2 text-sm text-gray-400">
               <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-blue-400" />
