@@ -12,6 +12,8 @@ interface ChatPanelProps {
   pendingActionsCount: number
 }
 
+const MAX_CLIENT_RETRIES = 2
+
 export function ChatPanel({ matterId, pendingActionsCount }: ChatPanelProps) {
   const [inputValue, setInputValue] = useState("")
   const [feedbackState, setFeedbackState] = useState<
@@ -19,8 +21,6 @@ export function ChatPanel({ matterId, pendingActionsCount }: ChatPanelProps) {
   >(() => new Map())
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const router = useRouter()
-
-  const MAX_CLIENT_RETRIES = 2
   const retryCountRef = useRef(0)
   const modelIndexRef = useRef(0)
   const [retriesExhausted, setRetriesExhausted] = useState(false)
@@ -52,14 +52,16 @@ export function ChatPanel({ matterId, pendingActionsCount }: ChatPanelProps) {
     }
   }, [status, regenerate])
 
-  // Auto-scroll to bottom when new messages arrive
+  const isStreaming = status === "streaming"
+
+  // Auto-scroll to bottom when new messages arrive or during streaming
   const prevMessageCount = useRef(0)
   useEffect(() => {
-    if (messages.length > prevMessageCount.current) {
+    if (messages.length > prevMessageCount.current || isStreaming) {
       messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
     }
     prevMessageCount.current = messages.length
-  }, [messages.length])
+  }, [messages.length, isStreaming])
 
   // Re-render server components when agent finishes responding
   // so StageProgress gets fresh data from the server.
@@ -100,16 +102,14 @@ export function ChatPanel({ matterId, pendingActionsCount }: ChatPanelProps) {
     [],
   )
 
-  const handleSubmit = (e: React.SubmitEvent) => {
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     const trimmed = inputValue.trim()
-    if (!trimmed || status === "streaming") return
+    if (!trimmed || isStreaming) return
 
     sendMessage({ role: "user", parts: [{ type: "text", text: trimmed }] })
     setInputValue("")
   }
-
-  const isStreaming = status === "streaming"
 
   return (
     <div className="flex h-full flex-col">
@@ -134,7 +134,8 @@ export function ChatPanel({ matterId, pendingActionsCount }: ChatPanelProps) {
               <p className="text-xs text-gray-400">Try asking:</p>
               <button
                 type="button"
-                className="block w-full rounded border border-gray-200 bg-gray-50 px-3 py-2 text-left text-xs text-gray-600 hover:bg-gray-100"
+                disabled={isStreaming}
+                className="block w-full rounded border border-gray-200 bg-gray-50 px-3 py-2 text-left text-xs text-gray-600 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50"
                 onClick={() => {
                   sendMessage({
                     role: "user",
@@ -151,7 +152,8 @@ export function ChatPanel({ matterId, pendingActionsCount }: ChatPanelProps) {
               </button>
               <button
                 type="button"
-                className="block w-full rounded border border-gray-200 bg-gray-50 px-3 py-2 text-left text-xs text-gray-600 hover:bg-gray-100"
+                disabled={isStreaming}
+                className="block w-full rounded border border-gray-200 bg-gray-50 px-3 py-2 text-left text-xs text-gray-600 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50"
                 onClick={() => {
                   sendMessage({
                     role: "user",
@@ -206,7 +208,8 @@ export function ChatPanel({ matterId, pendingActionsCount }: ChatPanelProps) {
       {/* Error display — only after retries exhausted */}
       {error && retriesExhausted && (
         <div className="mx-4 mb-2 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-          Error: {error.message}
+          Something went wrong. Please try again, or contact support if the
+          issue persists.
         </div>
       )}
 
