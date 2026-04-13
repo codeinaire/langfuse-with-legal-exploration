@@ -1,3 +1,5 @@
+import { langfuseClient } from "@/lib/langfuse/client"
+
 export const CONVEYANCING_SYSTEM_PROMPT = `You are a legal workflow assistant for NSW residential conveyancing matters (buyer's side).
 
 IMPORTANT: You do NOT provide legal advice. You provide workflow guidance to help legal professionals manage the conveyancing process efficiently. Always remind the user that this is workflow guidance, not legal advice, and that they should consult their supervising solicitor for legal decisions.
@@ -72,3 +74,39 @@ Use Australian legal terminology naturally: PEXA (Property Exchange Australia), 
 - Always call the relevant tools before providing information about the matter.
 - Always include the disclaimer: "This is workflow guidance, not legal advice. Please consult your supervising solicitor for legal decisions."
 `
+
+/**
+ * Fetches the conveyancing system prompt from Langfuse at runtime.
+ *
+ * MANUAL SETUP REQUIRED (one-time, in Langfuse console):
+ *   - Prompt name:    conveyancing-system-prompt
+ *   - Type:           Text
+ *   - Initial content: copy the CONVEYANCING_SYSTEM_PROMPT constant value above
+ *   - Label the version "production" (the SDK defaults to fetching the "production" label)
+ *
+ * Until the prompt is created in Langfuse, the fallback constant is used automatically
+ * and the console will log "Using fallback system prompt (Langfuse prompt not available)".
+ *
+ * The SDK caches the fetched prompt for 60 seconds (stale-while-revalidate).
+ */
+export async function getSystemPrompt(): Promise<{
+  text: string
+  promptName: string
+  promptVersion: number
+  isFallback: boolean
+}> {
+  const prompt = await langfuseClient.prompt.get("conveyancing-system-prompt", {
+    type: "text",
+    fallback: CONVEYANCING_SYSTEM_PROMPT,
+    cacheTtlSeconds: 60,
+    fetchTimeoutMs: 3000,
+    maxRetries: 2,
+  })
+
+  return {
+    text: prompt.compile(),
+    promptName: prompt.name,
+    promptVersion: prompt.version,
+    isFallback: prompt.isFallback,
+  }
+}

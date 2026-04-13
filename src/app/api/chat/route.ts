@@ -14,7 +14,7 @@ import { db } from "@/db"
 import { langfuseSpanProcessor } from "@/instrumentation"
 import type { ChatMessage } from "@/lib/ai/chat-types"
 import { getModelWithFallbacks } from "@/lib/ai/model"
-import { CONVEYANCING_SYSTEM_PROMPT } from "@/lib/ai/prompts"
+import { getSystemPrompt } from "@/lib/ai/prompts"
 import { conveyancingTools } from "@/lib/ai/tools"
 
 // Next.js route segment config -- multi-step agent can take >15 seconds
@@ -133,10 +133,21 @@ const handler = async (req: Request) => {
 
   const agentContext = { matterId, db }
 
+  const {
+    text: systemPrompt,
+    promptName,
+    promptVersion,
+    isFallback,
+  } = await getSystemPrompt()
+
+  if (isFallback) {
+    console.info("Using fallback system prompt (Langfuse prompt not available)")
+  }
+
   updateActiveObservation({
-    input: { system: CONVEYANCING_SYSTEM_PROMPT, messages },
+    input: { system: systemPrompt, messages },
   })
-  setActiveTraceIO({ input: { system: CONVEYANCING_SYSTEM_PROMPT, messages } })
+  setActiveTraceIO({ input: { system: systemPrompt, messages } })
 
   return propagateAttributes(
     {
@@ -148,10 +159,23 @@ const handler = async (req: Request) => {
       tags: ["conversational"],
     },
     async () => {
+      if (!isFallback) {
+        updateActiveObservation(
+          {
+            prompt: {
+              name: promptName,
+              version: promptVersion,
+              isFallback: false,
+            },
+          },
+          { asType: "generation" },
+        )
+      }
+
       try {
         return await tryStreamText(
           getModelWithFallbacks(),
-          CONVEYANCING_SYSTEM_PROMPT,
+          systemPrompt,
           uiMessages,
           agentContext,
         )
