@@ -10,9 +10,17 @@ TIMESTAMP=$(date "+%Y-%m-%d %H:%M:%S")
 GIT_SHA=$(git rev-parse --short HEAD 2>/dev/null || echo "uncommitted")
 
 # Title: use argument if provided, otherwise try GitButler branch name, fallback to git branch
-if [ -n "${1:-}" ]; then
-  TITLE="$1"
-else
+# Accepts both:  measure-bundle "my title"  and  measure-bundle --title="my title"
+TITLE=""
+for arg in "$@"; do
+  case "$arg" in
+    --title=*) TITLE="${arg#--title=}" ;;
+    --*) ;;  # ignore other flags
+    *) [ -z "$TITLE" ] && TITLE="$arg" ;;
+  esac
+done
+
+if [ -z "$TITLE" ]; then
   # Try to get the active GitButler virtual branch name
   TITLE=$(bts 2>/dev/null | grep -E "^\┊╭┄|^\├╯" -B1 | grep -oE '\[.*\]' | head -1 | tr -d '[]' || true)
   if [ -z "$TITLE" ]; then
@@ -78,8 +86,9 @@ if [ ! -f "$REPORT_FILE" ]; then
   printf "# Bundle Size History\n\nMeasured using \`npm run measure-bundle\`. Client sizes are gzipped.\n\n%s\n%s\n%s\n" \
     "$TABLE_HEADER" "$TABLE_SEPARATOR" "$NEW_ROW" > "$REPORT_FILE"
 else
-  # Read existing data rows (everything after the separator line)
-  EXISTING_ROWS=$(awk '/^\|---/{found=1; next} found' "$REPORT_FILE")
+  # Read existing data rows (everything after the separator line).
+  # Match both unformatted (|---) and formatter-aligned (| --- ) styles.
+  EXISTING_ROWS=$(awk '/^\| *---/{found=1; next} found' "$REPORT_FILE")
 
   # Rewrite the file: header + new row first + existing rows
   printf "# Bundle Size History\n\nMeasured using \`npm run measure-bundle\`. Client sizes are gzipped.\n\n%s\n%s\n%s\n" \
