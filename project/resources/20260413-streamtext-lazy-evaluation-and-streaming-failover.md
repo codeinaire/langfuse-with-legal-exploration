@@ -17,52 +17,89 @@ for (const model of models) {
 
 This **does not work** for streaming errors. The catch block only fires for synchronous failures (e.g., missing API key at construction time). If the provider accepts the connection but errors during generation, the catch never sees it.
 
-## Why: The Lazy Evaluation Chain
+## Why: The Async Pipeline Architecture
 
-The Vercel AI SDK's `streamText()` uses lazy evaluation — it defers the actual provider API call until the client starts consuming the response stream. Here's the full timeline:
+The Vercel AI SDK's `streamText()` uses a fire-and-forget async pattern inside a synchronous constructor. The provider HTTP request is initiated eagerly, but its results (and errors) flow through a stream pipeline — never as exceptions. Here's the full timeline, verified from the AI SDK v6 source:
 
-### Step 1: `streamText()` returns synchronously
+### Step 1: `streamText()` creates a `DefaultStreamTextResult` (synchronous)
 
 ```typescript
 const result = streamText({ model, messages, tools, ... })
 ```
 
-This does **not** call the Gemini/Groq/etc API. It returns a `StreamTextResult` object that describes what to do (model, messages, tools) but hasn't executed anything. Like creating a database query object without running it.
+`streamText()` is a **synchronous function** (not async). It calls `new DefaultStreamTextResult(...)` and returns it. No HTTP request to the provider has been made. The result object is a wrapper around a stream pipeline — not a response, not a promise, just plumbing.
 
-### Step 2: `toUIMessageStreamResponse()` creates a Response with a lazy body
+### Step 2: The constructor starts a fire-and-forget async process
+
+Inside the `DefaultStreamTextResult` constructor:
+
+1. A `stitchableStream` is created (a stream that sub-streams can be added to later)
+2. A `ReadableStream` with a `pull()` callback is created — it reads from the stitchable stream
+3. `TransformStream` pipelines are set up for processing chunks (telemetry, callbacks, etc.)
+4. All of this is wired together as `this.baseStream`
+
+Then, at the end of the constructor:
+
+```javascript
+// Still inside the constructor (which is NOT async)
+recordSpan({
+  fn: async (rootSpan) => {
+    await standardizePrompt(...)         // First await — constructor returns here
+    await retry(() => model.doStream())  // ← THE ACTUAL HTTP REQUEST TO THE PROVIDER
+    this.addStream(providerStream)       // Feed provider data into the pipeline
+  }
+})
+// Constructor returns — the async fn continues on the microtask queue
+```
+
+`recordSpan` calls the async `fn` immediately, but since the constructor is not async, it can't await the result. The async function runs until its first `await`, then suspends. The constructor finishes, `streamText()` returns.
+
+The async function resumes on the **microtask queue** and calls `model.doStream()` — this is where the HTTP request to the provider (e.g., `generativelanguage.googleapis.com`) is actually made. The provider's response stream is then fed into the `stitchableStream` via `addStream`.
+
+### Step 3: `toUIMessageStreamResponse()` wraps the pipeline in a Response (synchronous)
 
 ```typescript
 const response = result.toUIMessageStreamResponse(options)
 ```
 
-This creates a standard Web API `Response` object. The HTTP status (`200`) and headers (`Content-Type: text/event-stream`) are set **immediately**. But the body is a `ReadableStream` — a stream that produces data on demand via an internal `pull()` callback. No data has been produced yet.
+This creates a standard Web API `Response` object. The HTTP status (`200`) and headers (`Content-Type: text/event-stream`) are set **immediately**. The body is the `baseStream` pipeline from Step 2. No data has flowed through the pipeline yet — the stitchable stream is still empty, waiting for the fire-and-forget async to feed it.
 
-### Step 3: The Response is returned to Next.js
+### Step 4: The Response is returned to Next.js
 
 ```typescript
 return response  // 200 OK, headers sent to client
 ```
 
-Next.js sends the HTTP status line and headers to the client over the wire. The `200` status code is now **committed** — it cannot be changed.
+Next.js sends the HTTP status line and headers to the client. The `200` status code is **committed** — it cannot be changed.
 
-### Step 4: The client starts reading the body
+### Step 5: Data flows through the pipeline
 
-The browser (via `useChat` / `DefaultChatTransport`) reads the response body. This triggers the `ReadableStream`'s internal `pull()` function. **Only now** does the AI SDK make the actual HTTP request to the provider's API (e.g., `generativelanguage.googleapis.com`).
+By now, the fire-and-forget async from Step 2 has likely called `model.doStream()` and is feeding the provider's response into the stitchable stream. The client (via `useChat` / `DefaultChatTransport`) starts reading the Response body, which triggers `pull()` on the `ReadableStream`. `pull()` reads from the stitchable stream, which now has data from the provider.
 
-### Step 5: If the provider errors, it's too late
+### Step 6: If the provider errors, it's too late
 
-The error surfaces inside `pull()` — deep inside the ReadableStream, after the 200 was already sent. It gets embedded in the SSE stream as an error event. The `try/catch` in the route handler finished at Step 3, so it never sees this error.
+The error from `model.doStream()` is caught inside the fire-and-forget async function and piped into the stitchable stream as an error event. It flows through the pipeline, reaches `pull()`, and is embedded in the SSE stream. The `try/catch` in the route handler finished at Step 4. The 200 status was already sent.
 
 ```
 Timeline:
-──────────────────────────────────────────────────────────
-Server handler:   streamText() → toResponse() → return 200
-                  ↑ try/catch is here                    ↑ handler is done
-──────────────────────────────────────────────────────────
-Actual API call:                                            ← happens here
-                                                            (inside the stream)
-──────────────────────────────────────────────────────────
+─────────────────────────────────────────────────────────────────
+Server handler: streamText() → toResponse() → return 200
+                ↑ try/catch    (sync)          ↑ handler done
+─────────────────────────────────────────────────────────────────
+Microtask queue:       standardizePrompt() → model.doStream()
+                       (fire-and-forget)      ↑ HTTP request
+                                                to provider
+─────────────────────────────────────────────────────────────────
+Stream pipeline:                                    data/error
+                                                    flows here
+                                                        ↓
+Client (useChat):                                   pull() reads
+─────────────────────────────────────────────────────────────────
 ```
+
+### Key distinction
+
+`pull()` does **not** trigger the provider call — the fire-and-forget async in the constructor does. `pull()` just reads whatever the provider has sent through the pipeline. The provider call is initiated eagerly on the microtask queue, but its results and errors are delivered through the stream, never as exceptions that a `try/catch` could intercept.
 
 ## Consequence: Server-Side Failover Loops Are Dead Code
 
