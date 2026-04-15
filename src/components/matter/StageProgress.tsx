@@ -13,14 +13,19 @@ interface StageProgressProps {
   currentStage: string
 }
 
+const LOWERCASE_WORDS = new Set(["and", "of", "the", "in", "for", "to", "on"])
+
 /**
  * Converts a snake_case enum value to Title Case display name.
- * e.g. "engagement_and_onboarding" -> "Engagement And Onboarding"
+ * e.g. "engagement_and_onboarding" -> "Engagement and Onboarding"
  */
 function toDisplayName(enumValue: string): string {
   return enumValue
     .split("_")
-    .map((word) => `${word.charAt(0).toUpperCase()}${word.slice(1)}`)
+    .map((word, index) => {
+      if (index > 0 && LOWERCASE_WORDS.has(word)) return word
+      return `${word.charAt(0).toUpperCase()}${word.slice(1)}`
+    })
     .join(" ")
 }
 
@@ -32,6 +37,7 @@ function toDisplayName(enumValue: string): string {
 function formatDate(date: Date | string | null | undefined): string {
   if (!date) return ""
   const d = typeof date === "string" ? new Date(date) : date
+  if (Number.isNaN(d.getTime())) return ""
   return d.toLocaleDateString("en-AU", {
     day: "numeric",
     month: "short",

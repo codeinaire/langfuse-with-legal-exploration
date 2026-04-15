@@ -27,9 +27,18 @@ export function FeedbackModal({
     }
   }, [open])
 
+  useEffect(() => {
+    if (!open) return
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose()
+    }
+    document.addEventListener("keydown", handleKeyDown)
+    return () => document.removeEventListener("keydown", handleKeyDown)
+  }, [open, onClose])
+
   if (!open) return null
 
-  const handleSubmit = (e: React.SubmitEvent) => {
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     const trimmed = comment.trim()
     if (!trimmed) return
@@ -37,9 +46,25 @@ export function FeedbackModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
-      <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-lg">
-        <h3 className="text-sm font-semibold text-gray-800">Leave feedback</h3>
+    <button
+      type="button"
+      className="fixed inset-0 z-50 flex cursor-default items-center justify-center bg-black/30"
+      onClick={onClose}
+    >
+      {/* biome-ignore lint/a11y/useKeyWithClickEvents: stopPropagation only prevents backdrop close */}
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="feedback-modal-title"
+        className="w-full max-w-md rounded-lg bg-white p-6 text-left shadow-lg"
+        onClick={(_e) => _e.stopPropagation()}
+      >
+        <h3
+          id="feedback-modal-title"
+          className="text-sm font-semibold text-gray-800"
+        >
+          Leave feedback
+        </h3>
         <form onSubmit={handleSubmit} className="mt-3">
           <textarea
             ref={textareaRef}
@@ -76,6 +101,6 @@ export function FeedbackModal({
           </div>
         </form>
       </div>
-    </div>
+    </button>
   )
 }

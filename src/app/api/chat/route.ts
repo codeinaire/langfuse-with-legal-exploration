@@ -98,11 +98,6 @@ const handler = async (req: Request) => {
       isFallback,
     } = await getSystemPrompt()
 
-    updateActiveObservation({
-      input: { system: systemPrompt, messages },
-    })
-    setActiveTraceIO({ input: { system: systemPrompt, messages } })
-
     return await propagateAttributes(
       {
         traceName: "conveyancing-legal-matter-chat",
@@ -113,6 +108,11 @@ const handler = async (req: Request) => {
         tags: ["conversational"],
       },
       async () => {
+        updateActiveObservation({
+          input: { system: systemPrompt, messages },
+        })
+        setActiveTraceIO({ input: { system: systemPrompt, messages } })
+
         if (!isFallback) {
           updateActiveObservation(
             {

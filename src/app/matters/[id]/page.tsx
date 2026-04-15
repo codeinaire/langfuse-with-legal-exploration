@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation"
+import { z } from "zod"
 import { ChatPanel } from "@/components/chat/ChatPanel"
 import { StageProgress } from "@/components/matter/StageProgress"
 import { db } from "@/db"
@@ -11,6 +12,10 @@ interface MatterPageProps {
 
 export default async function MatterPage({ params }: MatterPageProps) {
   const { id } = await params
+
+  if (!z.uuid().safeParse(id).success) {
+    notFound()
+  }
 
   const [matter, stages] = await Promise.all([
     getMatterWithCurrentStage(db, id),
